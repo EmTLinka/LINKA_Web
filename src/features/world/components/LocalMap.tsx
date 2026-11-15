@@ -38,11 +38,10 @@ const EDGE_SEEDS = [3, 17, 43] as const
  *
  * The whole island is already there — its hills, woods, fields, roads and
  * water, drawn in pencil, readable and quiet. Nothing about it is hidden.
- * What a touch changes is colour: around each place the user has physically
- * touched, a pocket of the island takes its colour — leaf green, blue water,
- * warm fields — with the same watercolour edge as the globe's washes. Where
- * touches sit close together the pockets overlap and join, so over the years
- * the pencil island becomes, piece by piece, the user's own.
+ * What a touch changes is colour: around each Touch Point, a small pocket of
+ * the island turns green. Where two points sit close together their pockets
+ * overlap and join, so over the years the pencil island becomes, piece by
+ * piece, the user's own.
  */
 export default function LocalMap({
   width,
@@ -172,7 +171,6 @@ export default function LocalMap({
                   fill={url('wash')}
                   filter={fx(`edge-${pocket.variant}`)}
                 />
-                <circle cx={pocket.x} cy={pocket.y} r={reach * 0.3} fill="var(--color-sun)" opacity="0.55" filter={fx('bleed')} />
               </g>
             ))}
           </g>
@@ -181,7 +179,7 @@ export default function LocalMap({
           {detail && placed.length > 0 && (
             <g mask={url('pocket')}>
               <Stage resolved={resolved} delay={250}>
-                <path d={coast} fill="none" stroke="var(--color-mist-deep)" strokeWidth="14" opacity="0.55" filter={fx('bleed')} />
+                <path d={coast} fill="none" stroke={LEAF_WASH} strokeWidth="14" opacity="0.7" filter={fx('bleed')} />
               </Stage>
               <Stage resolved={resolved} delay={450}>
                 <Features detail={detail} url={url} colour />

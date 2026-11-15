@@ -52,8 +52,9 @@ export async function fetchPlaces(): Promise<PlaceRecord[]> {
   return data as unknown as PlaceRecord[]
 }
 
-// Touch events are evidence and analytics, not something a person is shown:
-// the app reads visits. Nothing here reads touch_events any more.
+// Visits are what a person has been shown as presence. Touch events are read
+// only to count how many times each Touch Point was recorded, which sets how
+// dark that point's green is. They never create a place on the map by themselves.
 
 export type VisitRow = Pick<
   Tables<'visits'>,
@@ -73,6 +74,41 @@ export async function fetchMyVisits(): Promise<VisitRow[]> {
 
   if (error) throw error
   return data
+}
+
+export type TouchFix = {
+  touchpointId: string
+  placeId: string
+  lat: number | null
+  lng: number | null
+}
+
+type TouchEventPoint = {
+  touchpoint_id: string
+  place_id: string
+  touchpoints: { latitude: number | null; longitude: number | null } | { latitude: number | null; longitude: number | null }[] | null
+}
+
+/**
+ * Every recorded touch of the signed-in user, one row per event, with the
+ * Touch Point's own coordinates when it has them. RLS returns nobody else's.
+ * The map groups these; it does not show the rows.
+ */
+export async function fetchMyTouchFixes(): Promise<TouchFix[]> {
+  const { data, error } = await (await getSupabase())
+    .from('touch_events')
+    .select('touchpoint_id, place_id, touchpoints(latitude, longitude)')
+
+  if (error) throw error
+  return (data as unknown as TouchEventPoint[]).map((row) => {
+    const point = Array.isArray(row.touchpoints) ? row.touchpoints[0] : row.touchpoints
+    return {
+      touchpointId: row.touchpoint_id,
+      placeId: row.place_id,
+      lat: point?.latitude ?? null,
+      lng: point?.longitude ?? null,
+    }
+  })
 }
 
 export type ResolvedTouchPoint = Database['public']['Functions']['resolve_touch_point']['Returns'][number]

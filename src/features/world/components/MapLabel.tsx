@@ -92,7 +92,7 @@ export default function MapLabel({
         className={cn(
           shared,
           // A full-size target around small words.
-          'min-h-11 justify-center rounded-lg px-2 py-1.5 outline-none focus-visible:ring-1 focus-visible:ring-graphite/30',
+          'min-h-12 justify-center rounded-lg px-3 py-2 outline-none focus-visible:ring-1 focus-visible:ring-graphite/30',
           side === 'right' && '-ml-2',
           side === 'left' && 'ml-2',
         )}

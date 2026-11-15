@@ -95,10 +95,26 @@ export type DiscoveryPlace = {
   sampleNote?: string
 }
 
+/**
+ * One Touch Point the user has recorded. The green on the map is painted
+ * around this point, not around the whole place or island. `touches` is how
+ * many times it was recorded; the globe and the country turn that into a
+ * capped, relative shade.
+ */
+export type WorldCheckpoint = {
+  id: string
+  placeId: string
+  lat: number
+  lng: number
+  touches: number
+}
+
 export type WorldSnapshot = {
   places: readonly WorldPlace[]
   /** The single place carrying the "recent" treatment, if any. */
   recentPlaceId: string | null
+  /** Where the green is painted. Empty when nothing has been touched. */
+  checkpoints: readonly WorldCheckpoint[]
 }
 
 /**
@@ -107,6 +123,6 @@ export type WorldSnapshot = {
  */
 export type WorldScale = 'world' | 'country' | 'city' | 'local' | 'touchpoint'
 
-export const EMPTY_WORLD: WorldSnapshot = { places: [], recentPlaceId: null }
+export const EMPTY_WORLD: WorldSnapshot = { places: [], recentPlaceId: null, checkpoints: [] }
 
 export const NO_DISCOVERY: readonly DiscoveryPlace[] = []

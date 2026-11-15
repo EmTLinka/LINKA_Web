@@ -2,6 +2,7 @@ import {
   EMPTY_WORLD,
   type DiscoveryPlace,
   type MemoryPhoto,
+  type WorldCheckpoint,
   type WorldPlace,
   type WorldSnapshot,
 } from '@/features/world/model/types'
@@ -244,6 +245,15 @@ export const DISCOVERY_PREVIEW: readonly DiscoveryPlace[] = [
   },
 ]
 
+/** A preview place, as the one Touch Point that colours it. Counts differ so the relative shade can be seen. */
+function spot(place: WorldPlace, touches: number): WorldCheckpoint {
+  return { id: place.id, placeId: place.id, lat: place.lat, lng: place.lng, touches }
+}
+
+function previewWorld(places: readonly WorldPlace[], recentPlaceId: string | null, touches: Readonly<Record<string, number>>): WorldSnapshot {
+  return { places, recentPlaceId, checkpoints: places.map((place) => spot(place, touches[place.id] ?? 1)) }
+}
+
 export type PreviewState = 'zero' | 'first' | 'many' | 'discover' | 'photo' | 'years'
 
 export type WorldPreview = {
@@ -255,37 +265,47 @@ export type WorldPreview = {
 export const WORLD_PREVIEWS: Record<PreviewState, WorldPreview> = {
   zero: { snapshot: EMPTY_WORLD, arrivalPlaceId: null },
   first: {
-    snapshot: { places: [SADO], recentPlaceId: SADO.id },
+    snapshot: previewWorld([SADO], SADO.id, { [SADO.id]: 1 }),
     arrivalPlaceId: SADO.id,
   },
   many: {
-    snapshot: { places: [EDINBURGH, TOKYO, SADO, KYOTO], recentPlaceId: KYOTO.id },
+    snapshot: previewWorld([EDINBURGH, TOKYO, SADO, KYOTO], KYOTO.id, {
+      [EDINBURGH.id]: 1,
+      [TOKYO.id]: 6,
+      [SADO.id]: 3,
+      [KYOTO.id]: 2,
+    }),
     arrivalPlaceId: null,
   },
   /** A: Japan has been lived in, Sado never — it can only be discovered. */
   discover: {
-    snapshot: { places: [EDINBURGH, TOKYO, KYOTO], recentPlaceId: KYOTO.id },
+    snapshot: previewWorld([EDINBURGH, TOKYO, KYOTO], KYOTO.id, {
+      [EDINBURGH.id]: 1,
+      [TOKYO.id]: 4,
+      [KYOTO.id]: 2,
+    }),
     arrivalPlaceId: null,
   },
   /** C: トキの森公園 touched, and one photograph added. */
   photo: {
-    snapshot: { places: [{ ...SADO, photo: TOKI_PHOTO }], recentPlaceId: SADO.id },
+    snapshot: previewWorld([{ ...SADO, photo: TOKI_PHOTO }], SADO.id, { [SADO.id]: 1 }),
     arrivalPlaceId: null,
   },
   /** D: years of Sado — some places remembered, some only touched, some never. */
   years: {
-    snapshot: {
-      places: [
-        EDINBURGH,
-        TOKYO,
-        KYOTO,
-        { ...SADO, photo: TOKI_PHOTO },
-        SADO_KOKUBUNJI,
-        { ...SADO_KINZAN, photo: KINZAN_PHOTO },
-        SHUKUNEGI,
-      ],
-      recentPlaceId: SHUKUNEGI.id,
-    },
+    snapshot: previewWorld(
+      [EDINBURGH, TOKYO, KYOTO, { ...SADO, photo: TOKI_PHOTO }, SADO_KOKUBUNJI, { ...SADO_KINZAN, photo: KINZAN_PHOTO }, SHUKUNEGI],
+      SHUKUNEGI.id,
+      {
+        [EDINBURGH.id]: 1,
+        [TOKYO.id]: 4,
+        [KYOTO.id]: 2,
+        [SADO.id]: 3,
+        [SADO_KOKUBUNJI.id]: 1,
+        [SADO_KINZAN.id]: 9,
+        [SHUKUNEGI.id]: 5,
+      },
+    ),
     arrivalPlaceId: null,
   },
 }
