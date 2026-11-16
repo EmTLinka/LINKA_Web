@@ -103,8 +103,9 @@ const noop = () => {}
  * into that country. On a country, a tap on an island that has a map, or on
  * a checkpoint there, goes in. Close in, a checkpoint opens its profile.
  *
- * It does not know where its places come from: production passes the user's
- * own (today, none) and the dev preview passes its scenarios.
+ * It does not know where its places come from. Both home and the dev preview
+ * pass published places from the database, and visits only where someone has
+ * actually touched. The coastlines are the drawings, not the database.
  */
 export default function MyWorld({
   snapshot,
@@ -290,30 +291,29 @@ export default function MyWorld({
           ]
         })
 
-  const areaPlaces = useMemo(
-    () =>
-      shownArea
-        ? belonging.filter(({ area }) => area?.id === shownArea.id).map(({ place }) => place)
-        : [],
-    [shownArea, belonging],
-  )
-  const touchedIds = useMemo(() => new Set(areaPlaces.map(({ id }) => id)), [areaPlaces])
   const areaDiscovery = useMemo(() => {
     const country = shownArea ? COUNTRIES.find((c) => c.areas.some((a) => a.id === shownArea.id)) : null
     return country && shownArea
       ? discovery.filter((place) => areaOf(country, place)?.id === shownArea.id)
       : []
   }, [discovery, shownArea])
-  const discoverable = useMemo(
-    () =>
-      view === null || location.level !== 2
-        ? []
-        : areaDiscovery
-            .filter(({ id }) => !touchedIds.has(id))
-            .map((place) => ({ place, at: project(view, place.lng, place.lat) }))
-            .filter(({ at }) => at.visible && onScreen(at, width, height)),
-    [areaDiscovery, touchedIds, view, location.level, width, height],
-  )
+  // Published places from the database. Visited ones are the marks above;
+  // the rest are drawn at every scale, on the same hardcoded coast.
+  const discoverable = useMemo(() => {
+    if (view === null) return []
+    const visited = new Set(places.map((place) => place.id))
+    let candidates = discovery.filter(({ id }) => !visited.has(id))
+    if (location.level === 1) {
+      const countryId = location.country.id
+      candidates = candidates.filter((place) => countryOf(place)?.id === countryId)
+    } else if (location.level === 2) {
+      const inArea = new Set(areaDiscovery.map((place) => place.id))
+      candidates = candidates.filter((place) => inArea.has(place.id))
+    }
+    return candidates
+      .map((place) => ({ place, at: project(view, place.lng, place.lat) }))
+      .filter(({ at }) => at.visible && onScreen(at, width, height))
+  }, [areaDiscovery, discovery, location, places, view, width, height])
 
   // The journal's memories in this area, beside (never on) the land's colour.
   const areaMemories = useMemo(() => {
@@ -559,12 +559,16 @@ export default function MyWorld({
               type="button"
               aria-pressed={isOpen}
               aria-label={copy.a11y.discoverable(place.name, place.nameLatin)}
-              onClick={() => chooseDiscovery(isOpen ? null : place.id)}
+              onClick={() => {
+                const into = wayIn(place)
+                if (into) onEnter(into.path)
+                else chooseDiscovery(isOpen ? null : place.id)
+              }}
               style={{ left: at.x, top: at.y }}
               className={cn(
                 'absolute flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full',
                 'transition-opacity duration-700 ease-calm outline-none focus-visible:ring-1 focus-visible:ring-graphite/30',
-                isResolved ? 'opacity-100 delay-300' : 'pointer-events-none opacity-0',
+                isSettled ? 'opacity-100 delay-300' : 'pointer-events-none opacity-0',
               )}
             >
               <DiscoveryMark selected={isOpen} />
