@@ -7,9 +7,10 @@ import type { Tables, TablesUpdate } from '@/types/database.types'
 /**
  * A person's own memories: the note, the mood and the photographs of a visit.
  *
- * Everything here is private. RLS lets a user read and write only their own
- * rows and their own `memory-photos/<user id>/…` objects; photos are shown
- * through short-lived signed URLs, never public ones.
+ * A memory is private unless its author marks it public. RLS lets a user read
+ * and write only their own rows; anyone may read a memory whose visibility is
+ * `public`, and sign a URL for a photograph that memory points at. Every other
+ * object in `memory-photos` stays in that user's folder.
  */
 
 export type MemoryPhotoRow = Pick<Tables<'memory_photos'>, 'id' | 'storage_path' | 'width' | 'height' | 'position'>
@@ -41,6 +42,7 @@ export type MemoryRecord = Pick<
   | 'place_label'
   | 'remembered_on'
   | 'date_precision'
+  | 'visibility'
 > & {
   /** Present once the mood migration is applied. */
   mood?: Mood | null
@@ -65,6 +67,29 @@ export async function fetchMyMemories(): Promise<MemoryRecord[]> {
 }
 
 /** The memory of a visit, if one has been kept. At most one exists. */
+/** A memory its author offered to the place: the note and the photographs, nothing else. */
+export type PublicMemory = {
+  id: string
+  note: string | null
+  created_at: string
+  memory_photos: MemoryPhotoRow[]
+}
+
+/**
+ * Memories of one place that their authors marked public, oldest first.
+ * Private memories are not in this result — the database refuses them.
+ */
+export async function fetchPublicMemories(placeId: string): Promise<PublicMemory[]> {
+  const { data, error } = await (await getSupabase())
+    .from('memories')
+    .select('id, note, created_at, memory_photos!memory_photos_memory_id_fkey(id, storage_path, width, height, position)')
+    .eq('place_id', placeId)
+    .eq('visibility', 'public')
+    .order('created_at', { ascending: true })
+  if (error) throw error
+  return (data ?? []) as unknown as PublicMemory[]
+}
+
 export async function fetchMemoryForVisit(visitId: string): Promise<MemoryRecord | null> {
   const { data, error } = await (await getSupabase())
     .from('memories')
@@ -86,11 +111,27 @@ function isMissingMoodColumn(error: { code?: string; message?: string } | null):
 }
 
 /**
+ * The server still only allows `private`, or the client may not write
+ * `visibility` yet. The note is saved without it; the caller is told.
+ */
+function isVisibilityRejected(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false
+  const message = error.message ?? ''
+  return (
+    (error.code === '23514' && message.includes('visibility')) ||
+    error.code === '42501' ||
+    ((error.code === 'PGRST204' || error.code === '42703') && message.includes('visibility'))
+  )
+}
+
+/**
  * `recovered`: the caller did not know this visit already had a memory, so
  * the one that existed was updated instead — and it may hold words or a mood
  * the caller has not shown yet.
  */
-export type SavedMemory = { memory: MemoryRecord; moodSkipped: boolean; recovered: boolean }
+export type SavedMemory = { memory: MemoryRecord; moodSkipped: boolean; shareSkipped: boolean; recovered: boolean }
+
+export type MemoryVisibility = 'private' | 'public'
 
 /** The visit a memory belongs to: `record_touch()`'s `visit_id` and `place_id`. */
 export type VisitRef = { visitId: string; placeId: string }
@@ -111,14 +152,18 @@ export type VisitRef = { visitId: string; placeId: string }
 export async function saveMemory(
   existing: MemoryRecord | null,
   visit: VisitRef,
-  input: { note: string; mood: Mood | null },
+  input: { note: string; mood: Mood | null; visibility?: MemoryVisibility },
 ): Promise<SavedMemory> {
   const supabase = await getSupabase()
   let target = existing
   let fields = input
-  const write = (withMood: boolean) => {
-    const values: { note: string | null; mood?: Mood | null } = { note: fields.note.trim() || null }
+  const write = (withMood: boolean, withVisibility: boolean) => {
+    const values: { note: string | null; mood?: Mood | null; visibility?: MemoryVisibility } = {
+      note: fields.note.trim() || null,
+    }
     if (withMood && (fields.mood || target?.mood)) values.mood = fields.mood
+    // Omitted, the column keeps its default (`private`) or the value already stored.
+    if (withVisibility && fields.visibility) values.visibility = fields.visibility
     // `mood` joins the generated types once its migration is applied.
     const row = values as TablesUpdate<'memories'>
     const query = target
@@ -127,23 +172,32 @@ export async function saveMemory(
     return query.select(MEMORY_COLUMNS).single()
   }
 
-  let { data, error } = await write(true)
+  let { data, error } = await write(true, true)
   let recovered = false
   if (!target && isVisitAlreadyRemembered(error)) {
     target = await fetchMemoryForVisit(visit.visitId)
     if (target) {
       recovered = true
-      fields = { note: input.note.trim() ? input.note : (target.note ?? ''), mood: input.mood ?? target.mood ?? null }
-      ;({ data, error } = await write(true))
+      fields = {
+        note: input.note.trim() ? input.note : (target.note ?? ''),
+        mood: input.mood ?? target.mood ?? null,
+        visibility: input.visibility ?? (target.visibility === 'public' ? 'public' : undefined),
+      }
+      ;({ data, error } = await write(true, true))
     }
   }
   let moodSkipped = false
   if (isMissingMoodColumn(error) && fields.mood) {
-    ;({ data, error } = await write(false))
+    ;({ data, error } = await write(false, true))
     moodSkipped = true
   }
+  let shareSkipped = false
+  if (isVisibilityRejected(error) && fields.visibility) {
+    ;({ data, error } = await write(!moodSkipped, false))
+    shareSkipped = fields.visibility === 'public'
+  }
   if (error) throw error
-  return { memory: data as unknown as MemoryRecord, moodSkipped, recovered }
+  return { memory: data as unknown as MemoryRecord, moodSkipped, shareSkipped, recovered }
 }
 
 const BUCKET = 'memory-photos'
@@ -215,6 +269,8 @@ export type PastMemoryInput = {
   precision: 'day' | 'month' | 'year'
   note: string
   mood: Mood | null
+  /** Offered to the place profile. Only meaningful when `placeId` is a LINKA place. */
+  visibility?: MemoryVisibility
 }
 
 /**
@@ -224,18 +280,32 @@ export type PastMemoryInput = {
  */
 export async function savePastMemory(existing: MemoryRecord | null, input: PastMemoryInput): Promise<MemoryRecord> {
   const supabase = await getSupabase()
-  const fields = {
-    place_id: input.placeId,
-    place_label: input.placeId ? null : input.placeLabel?.trim() || null,
-    remembered_on: input.rememberedOn,
-    date_precision: input.precision,
-    note: input.note.trim() || null,
-    mood: input.mood,
+  const write = (withVisibility: boolean) => {
+    const fields: {
+      place_id: string | null
+      place_label: string | null
+      remembered_on: string | null
+      date_precision: PastMemoryInput['precision']
+      note: string | null
+      mood: Mood | null
+      visibility?: MemoryVisibility
+    } = {
+      place_id: input.placeId,
+      place_label: input.placeId ? null : input.placeLabel?.trim() || null,
+      remembered_on: input.rememberedOn,
+      date_precision: input.precision,
+      note: input.note.trim() || null,
+      mood: input.mood,
+    }
+    // No LINKA place means there is no profile to offer it to.
+    if (withVisibility) fields.visibility = input.placeId ? (input.visibility ?? 'private') : 'private'
+    const query = existing
+      ? supabase.from('memories').update(fields).eq('id', existing.id)
+      : supabase.from('memories').insert({ ...fields, kind: 'past' })
+    return query.select(MEMORY_COLUMNS).single()
   }
-  const query = existing
-    ? supabase.from('memories').update(fields).eq('id', existing.id)
-    : supabase.from('memories').insert({ ...fields, kind: 'past' })
-  const { data, error } = await query.select(MEMORY_COLUMNS).single()
+  let { data, error } = await write(true)
+  if (isVisibilityRejected(error)) ({ data, error } = await write(false))
   if (error) throw error
   return data as unknown as MemoryRecord
 }

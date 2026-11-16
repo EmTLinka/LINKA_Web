@@ -1,8 +1,9 @@
-import type { ReactNode } from 'react'
+import { type ReactNode } from 'react'
 
 import type { RegionProgress } from '@/data/journey'
 import type { PlaceExtras } from '@/data/places'
 import NearbyPlaces, { type NearbyPlace } from '@/features/places/components/NearbyPlaces'
+import PlaceGallery from '@/features/places/components/PlaceGallery'
 import PlaceHero from '@/features/places/components/PlaceHero'
 import PlaceSafety, { type SafetyScope } from '@/features/places/components/PlaceSafety'
 import type { Hero, LocalizedText, Practical } from '@/features/places/localize'
@@ -57,6 +58,12 @@ type PlaceSheetProps = {
   compact?: boolean
   /** Extra content under the identity (the check-in status, actions). */
   children?: ReactNode
+  /**
+   * When set, the photograph opens into the memories this place was offered.
+   * A sideways drag moves through them. Omitted, only the place's own
+   * photograph is shown.
+   */
+  placeId?: string | null
 }
 
 /**
@@ -86,6 +93,7 @@ export default function PlaceSheet({
   others = [],
   onOpenOther,
   children,
+  placeId = null,
 }: PlaceSheetProps) {
   const copy = useMessages()
   const { locale } = useLocale()
@@ -99,9 +107,27 @@ export default function PlaceSheet({
 
   return (
     <article className="text-graphite">
-      {place.hero && <PlaceHero hero={place.hero} priority={heroPriority} tabIndex={tabIndex} />}
+      {placeId ? (
+        <PlaceGallery
+          placeId={placeId}
+          hero={place.hero}
+          priority={heroPriority}
+          tabIndex={tabIndex}
+          overlay={
+            <PlaceIdentity
+              place={place}
+              visitedOn={visitedOn}
+              locale={locale}
+              onPhoto
+              fallbacks={fallbacks}
+            />
+          }
+        />
+      ) : (
+        place.hero && <PlaceHero hero={place.hero} priority={heroPriority} tabIndex={tabIndex} />
+      )}
 
-      <div className={cn('px-5', place.hero ? 'pt-4' : 'pt-5')}>
+      <div className={cn('px-5', place.hero || placeId ? 'pt-4' : 'pt-5')}>
         {notice}
         {safetyFirst && (extras.safety.length > 0 || extras.safetyFailed) && (
           <div className="mb-5">
@@ -109,31 +135,11 @@ export default function PlaceSheet({
           </div>
         )}
 
-        <h2 lang="ja" className="text-[1.5rem] font-light leading-tight tracking-[0.08em]">
-          {place.name}
-        </h2>
-        <p className="mt-1 text-[0.6rem] uppercase tracking-[0.24em] text-graphite-soft">{place.nameLatin}</p>
-
-        <p className="mt-2.5 flex flex-wrap items-center gap-x-2 text-[0.66rem] tracking-[0.08em] text-graphite-soft">
-          <VisitMark visited={Boolean(visitedOn)} />
-          <span className={visitedOn ? 'text-graphite' : undefined}>
-            {visitedOn ? `${copy.sheet.visited} · ${formatCalendarDate(visitedOn, locale)}` : copy.sheet.notVisited}
-          </span>
-          {place.locality && <span>· {place.locality}</span>}
-        </p>
+        {!placeId && (
+          <PlaceIdentity place={place} visitedOn={visitedOn} locale={locale} fallbacks={fallbacks} />
+        )}
 
         {children}
-
-        {fallbacks.length > 0 && (
-          <p className="mt-4 text-[0.62rem] leading-snug tracking-[0.03em] text-graphite-faint">
-            {copy.place.fallback(fallbacks.map((l) => copy.language.names[l]).join(' / '))}
-          </p>
-        )}
-        {place.summary && (
-          <p lang={HTML_LANG[place.summary.locale]} className="mt-2 text-[0.86rem] font-light leading-relaxed tracking-[0.02em]">
-            {place.summary.text}
-          </p>
-        )}
 
         {!compact && (extras.visitors !== null || progress) && (
           <div className="mt-5 grid grid-cols-1 gap-2">
@@ -276,10 +282,54 @@ function Module({ children }: { children: ReactNode }) {
   return <div className="rounded-xl bg-white/60 px-3.5 py-2.5 ring-1 ring-graphite/[0.07]">{children}</div>
 }
 
+/** The place's name, when it was visited, and what it is. On the photograph, or on the paper when there is none. */
+function PlaceIdentity({
+  place,
+  visitedOn,
+  locale,
+  onPhoto = false,
+  fallbacks,
+}: {
+  place: SheetPlace
+  visitedOn: string | null
+  locale: Locale
+  onPhoto?: boolean
+  fallbacks: readonly Locale[]
+}) {
+  const copy = useMessages()
+  const quiet = onPhoto ? 'text-white/75' : 'text-graphite-soft'
+  const body = onPhoto ? 'text-white' : 'text-graphite'
+  return (
+    <div className={onPhoto ? '[text-shadow:0_1px_2px_rgba(0,0,0,0.55)]' : undefined}>
+      <h2 lang="ja" className={cn('text-[1.5rem] font-light leading-tight tracking-[0.08em]', body)}>
+        {place.name}
+      </h2>
+      <p className={cn('mt-1 text-[0.6rem] uppercase tracking-[0.24em]', quiet)}>{place.nameLatin}</p>
+      <p className={cn('mt-2.5 flex flex-wrap items-center gap-x-2 text-[0.66rem] tracking-[0.08em]', quiet)}>
+        <VisitMark visited={Boolean(visitedOn)} className={onPhoto ? 'text-white/80' : undefined} />
+        <span className={visitedOn ? body : undefined}>
+          {visitedOn ? `${copy.sheet.visited} · ${formatCalendarDate(visitedOn, locale)}` : copy.sheet.notVisited}
+        </span>
+        {place.locality && <span>· {place.locality}</span>}
+      </p>
+      {fallbacks.length > 0 && (
+        <p className={cn('mt-3 text-[0.62rem] leading-snug tracking-[0.03em]', onPhoto ? 'text-white/70' : 'text-graphite-faint')}>
+          {copy.place.fallback(fallbacks.map((l) => copy.language.names[l]).join(' / '))}
+        </p>
+      )}
+      {place.summary && (
+        <p lang={HTML_LANG[place.summary.locale]} className={cn('mt-2 text-[0.86rem] font-light leading-relaxed tracking-[0.02em]', body)}>
+          {place.summary.text}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /** ○ before a visit, :))) after — the same marks the map uses. */
-function VisitMark({ visited }: { visited: boolean }) {
+function VisitMark({ visited, className }: { visited: boolean; className?: string }) {
   return visited ? (
-    <svg aria-hidden viewBox="0 0 13 10" className="h-2.5 w-3 text-graphite/60">
+    <svg aria-hidden viewBox="0 0 13 10" className={cn('h-2.5 w-3 text-graphite/60', className)}>
       <circle cx="1.6" cy="5" r="1.3" fill="currentColor" />
       <g fill="none" stroke="currentColor" strokeWidth="0.9" strokeLinecap="round">
         <path d="M4.6 3.1a2.7 2.7 0 0 1 0 3.8" />
@@ -288,7 +338,7 @@ function VisitMark({ visited }: { visited: boolean }) {
       </g>
     </svg>
   ) : (
-    <svg aria-hidden viewBox="0 0 10 10" className="size-2.5 text-graphite/55">
+    <svg aria-hidden viewBox="0 0 10 10" className={cn('size-2.5 text-graphite/55', className)}>
       <circle cx="5" cy="5" r="3.8" fill="none" stroke="currentColor" strokeWidth="1" />
     </svg>
   )

@@ -1,4 +1,5 @@
 import type { Hero } from '@/features/places/localize'
+import { cn } from '@/lib/cn'
 
 /**
  * A place's licensed photograph, with its attribution on the image.
@@ -13,9 +14,20 @@ import type { Hero } from '@/features/places/localize'
  * licence named in it links to the licence itself. Nothing is shown for a
  * place without a credited image — no photograph is ever invented.
  */
-export default function PlaceHero({ hero, priority, tabIndex }: { hero: Hero; priority: boolean; tabIndex: number }) {
+export default function PlaceHero({
+  hero,
+  priority,
+  tabIndex,
+  fill = false,
+}: {
+  hero: Hero
+  priority: boolean
+  tabIndex: number
+  /** Fill a frame that already has a fixed size, instead of setting one from the photograph. */
+  fill?: boolean
+}) {
   return (
-    <figure className="relative overflow-hidden bg-[#e9e4da]">
+    <figure className={cn('overflow-hidden bg-[#e9e4da]', fill ? 'absolute inset-0' : 'relative')}>
       <img
         src={hero.src}
         srcSet={hero.srcSet}
@@ -26,10 +38,10 @@ export default function PlaceHero({ hero, priority, tabIndex }: { hero: Hero; pr
         loading={priority ? 'eager' : 'lazy'}
         fetchPriority={priority ? 'high' : 'auto'}
         decoding="async"
-        className="block aspect-[16/10] w-full object-cover saturate-[0.92]"
+        className={cn('block w-full object-cover saturate-[0.92]', fill ? 'h-full' : 'aspect-[16/10]')}
       />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/35 to-transparent" />
-      <figcaption className="absolute bottom-1.5 right-2 text-[0.54rem] tracking-[0.03em] text-white/90 [text-shadow:0_0_4px_rgba(0,0,0,0.6)]">
+      {!fill && <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/35 to-transparent" />}
+      <figcaption className={cn('absolute text-[0.54rem] tracking-[0.03em] text-white/90 [text-shadow:0_0_4px_rgba(0,0,0,0.6)]', fill ? 'left-3 top-2' : 'bottom-1.5 right-2')}>
         <Credit hero={hero} tabIndex={tabIndex} />
       </figcaption>
     </figure>

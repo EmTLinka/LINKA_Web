@@ -78,7 +78,7 @@ function MomentPage({ entry }: { entry: JourneyEntry }) {
   const { locale } = useLocale()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { state } = useLocation() as { state: { photosFailed?: number } | null }
+  const { state } = useLocation() as { state: { photosFailed?: number; shareSkipped?: boolean } | null }
   const face = faceOf(entry, locale)
   const memory = entry.memory
   const cover = face.photos[0]
@@ -166,6 +166,7 @@ function MomentPage({ entry }: { entry: JourneyEntry }) {
 
       <div className="mt-9 px-5">
         {state?.photosFailed ? <p role="alert" className="mb-3 text-[0.7rem] text-[#a0442c]">{cc.pastForm.photoFailed}</p> : null}
+        {state?.shareSkipped ? <p role="status" className="mb-3 text-[0.7rem] text-graphite-soft">{copy.memory.shareNotSaved}</p> : null}
         <MemoryPhotos
           memory={memory}
           placeName={face.name}

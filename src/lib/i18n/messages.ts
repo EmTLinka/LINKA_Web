@@ -48,6 +48,11 @@ type BaseMessages = {
     fallback: (shownIn: string) => string
     close: string
     activities: string
+    /** Advances the place profile through its photograph and public memories. */
+    nextPhoto: string
+    /** The note of a memory its author offered to this place. */
+    memoryPost: string
+    memoryPhoto: string
   }
   language: {
     label: string
@@ -110,6 +115,9 @@ const en: BaseMessages = {
     fallback: (shownIn) => `Shown in ${shownIn} — not yet written in English.`,
     close: 'Close',
     activities: 'Things to do',
+    nextPhoto: 'Next photo',
+    memoryPost: 'Shared memory',
+    memoryPhoto: 'A photograph shared with this place',
   },
   language: { label: 'Language', names: { ja: 'Japanese', en: 'English', 'zh-Hans': 'Simplified Chinese' } },
   touch: {
@@ -168,6 +176,9 @@ const ja: BaseMessages = {
     fallback: (shownIn) => `${shownIn}で表示しています（日本語の説明は準備中です）。`,
     close: '閉じる',
     activities: 'できること',
+    nextPhoto: '次の写真',
+    memoryPost: '公開された思い出',
+    memoryPhoto: 'この場所に公開された写真',
   },
   language: { label: '言語', names: { ja: '日本語', en: '英語', 'zh-Hans': '簡体字中国語' } },
   touch: {
@@ -226,6 +237,9 @@ const zhHans: BaseMessages = {
     fallback: (shownIn) => `暂无简体中文介绍，以下以${shownIn}显示。`,
     close: '关闭',
     activities: '可以做的事',
+    nextPhoto: '下一张照片',
+    memoryPost: '公开的回忆',
+    memoryPhoto: '分享到这个地点的照片',
   },
   language: { label: '语言', names: { ja: '日语', en: '英语', 'zh-Hans': '简体中文' } },
   touch: {
