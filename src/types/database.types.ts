@@ -1244,6 +1244,17 @@ export type Database = {
           visit_id: string
         }[]
       }
+      shared_memory_photos: {
+        Args: { p_place_id: string }
+        Returns: {
+          height: number
+          id: string
+          memory_id: string
+          position: number
+          storage_path: string
+          width: number
+        }[]
+      }
       resolve_touch_point: {
         Args: { p_public_id: string }
         Returns: {

@@ -10,7 +10,7 @@ import MemoryPhotos from '@/features/journal/components/MemoryPhotos'
 import { faceOf } from '@/features/journal/entry'
 import SignInGate from '@/features/journey/SignInGate'
 import { useJourney } from '@/features/journey/useJourney'
-import { deletePastMemory, saveMemory } from '@/features/memories/api'
+import { deletePastMemory, saveMemory, setMemoryVisibility, type MemoryRecord } from '@/features/memories/api'
 import MemoryComposer from '@/features/memories/MemoryComposer'
 import PhotoViewer from '@/features/memories/PhotoViewer'
 import { PrivatePhoto } from '@/features/memories/PrivatePhoto'
@@ -78,7 +78,7 @@ function MomentPage({ entry }: { entry: JourneyEntry }) {
   const { locale } = useLocale()
   const { user } = useAuth()
   const navigate = useNavigate()
-  const { state } = useLocation() as { state: { photosFailed?: number } | null }
+  const { state } = useLocation() as { state: { photosFailed?: number; shareSkipped?: boolean } | null }
   const face = faceOf(entry, locale)
   const memory = entry.memory
   const cover = face.photos[0]
@@ -166,6 +166,7 @@ function MomentPage({ entry }: { entry: JourneyEntry }) {
 
       <div className="mt-9 px-5">
         {state?.photosFailed ? <p role="alert" className="mb-3 text-[0.7rem] text-[#a0442c]">{cc.pastForm.photoFailed}</p> : null}
+        {state?.shareSkipped ? <p role="status" className="mb-3 text-[0.7rem] text-graphite-soft">{copy.memory.shareNotSaved}</p> : null}
         <MemoryPhotos
           memory={memory}
           placeName={face.name}
@@ -179,6 +180,8 @@ function MomentPage({ entry }: { entry: JourneyEntry }) {
           }}
         />
       </div>
+
+      {entry.kind === 'past' && memory?.place_id && <ShareOnPlace memory={memory} />}
 
       {entry.kind === 'past' && (
         <div className="mt-10 flex flex-col gap-2 px-5">
@@ -210,5 +213,55 @@ function MomentPage({ entry }: { entry: JourneyEntry }) {
         <PhotoViewer src={urls[cover.storage_path]} alt={copy.memory.photoAlt(face.name)} width={cover.width} height={cover.height} onClose={() => setViewing(false)} />
       )}
     </article>
+  )
+}
+
+/**
+ * A journal entry at a LINKA place can offer its photographs to that place,
+ * the same choice a visit's memory makes. Checked, they join the place profile.
+ */
+function ShareOnPlace({ memory }: { memory: MemoryRecord }) {
+  const copy = useMessages()
+  const { user } = useAuth()
+  const [busy, setBusy] = useState(false)
+  const [skipped, setSkipped] = useState(false)
+  const shared = memory.visibility === 'public'
+
+  async function toggle(next: boolean) {
+    const asked = next ? 'public' : 'private'
+    setBusy(true)
+    setSkipped(false)
+    try {
+      const saved = await setMemoryVisibility(memory.id, asked)
+      if (saved && user) {
+        memorySaved(user.id, {
+          ...saved,
+          memory_photos: saved.memory_photos?.length ? saved.memory_photos : memory.memory_photos,
+        })
+      }
+      setSkipped(!saved || saved.visibility !== asked)
+    } catch {
+      setSkipped(true)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-8 px-5">
+      <label className="flex items-start gap-2.5 text-[0.78rem] leading-snug text-graphite">
+        <input
+          type="checkbox"
+          checked={shared}
+          disabled={busy}
+          onChange={(event) => void toggle(event.target.checked)}
+          className="mt-0.5 size-4 shrink-0 accent-graphite"
+        />
+        <span>{copy.memory.share}</span>
+      </label>
+      <p className="mt-2 text-[0.64rem] leading-relaxed text-graphite-faint">
+        {skipped ? copy.memory.shareNotSaved : shared ? copy.memory.shared : copy.memory.private}
+      </p>
+    </div>
   )
 }

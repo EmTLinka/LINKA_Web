@@ -101,6 +101,7 @@ function PastMemoryForm({ existing }: { existing: MemoryRecord | null }) {
   const [date, setDate] = useState(existing?.remembered_on ?? '')
   const [mood, setMood] = useState<Mood | null>(existing?.mood ?? null)
   const [note, setNote] = useState(existing?.note ?? '')
+  const [shared, setShared] = useState(existing?.visibility === 'public')
   const [state, setState] = useState<'idle' | 'saving' | 'uploading' | 'failed'>('idle')
   const [uploaded, setUploaded] = useState(0)
   const [whereError, setWhereError] = useState(false)
@@ -172,7 +173,15 @@ function PastMemoryForm({ existing }: { existing: MemoryRecord | null }) {
     setWhereError(false)
     setState('saving')
     try {
-      let memory = await savePastMemory(existing, { placeId, placeLabel: label, rememberedOn: storedDate(), precision, note, mood })
+      let memory = await savePastMemory(existing, {
+        placeId,
+        placeLabel: label,
+        rememberedOn: storedDate(),
+        precision,
+        note,
+        mood,
+        visibility: placeId && shared ? 'public' : 'private',
+      })
       if (user) memorySaved(user.id, memory)
       let failed = 0
       if (photos.length > 0 && user) {
@@ -190,7 +199,12 @@ function PastMemoryForm({ existing }: { existing: MemoryRecord | null }) {
         }
       }
       // A photo that could not be added can be added again on the page itself, which says so.
-      navigate(`/moments/${memory.id}`, { replace: true, state: failed > 0 ? { photosFailed: failed } : null })
+      const asked = placeId && shared ? 'public' : 'private'
+      const shareSkipped = Boolean(placeId && memory.visibility !== asked)
+      navigate(`/moments/${memory.id}`, {
+        replace: true,
+        state: failed > 0 || shareSkipped ? { photosFailed: failed || undefined, shareSkipped } : null,
+      })
     } catch {
       setState('failed')
     }
@@ -361,6 +375,17 @@ function PastMemoryForm({ existing }: { existing: MemoryRecord | null }) {
       </section>
 
       <p className="mt-7 rounded-xl bg-graphite/[0.04] px-4 py-3 text-[0.7rem] leading-relaxed text-graphite-soft">{t.notVerified}</p>
+      {placeId && (
+        <label className="mt-5 flex items-start gap-2.5 text-[0.78rem] leading-snug text-graphite">
+          <input
+            type="checkbox"
+            checked={shared}
+            onChange={(event) => setShared(event.target.checked)}
+            className="mt-0.5 size-4 shrink-0 accent-graphite"
+          />
+          <span>{copy.memory.share}</span>
+        </label>
+      )}
       {state === 'failed' && <p role="alert" className="mt-4 text-center text-[0.74rem] text-[#a0442c]">{f.failed}</p>}
       <button type="submit" disabled={busy} className="mt-5 min-h-13 w-full rounded-full bg-graphite text-[0.88rem] tracking-[0.04em] text-paper-lit disabled:opacity-50">
         {state === 'uploading' ? f.uploading(uploaded, photos.length) : state === 'saving' ? f.saving : t.save}
@@ -370,7 +395,7 @@ function PastMemoryForm({ existing }: { existing: MemoryRecord | null }) {
           <div className="h-full bg-graphite/60 transition-[width] duration-500" style={{ width: `${(uploaded / Math.max(1, photos.length)) * 100}%` }} />
         </div>
       )}
-      <p className="mt-5 text-[0.62rem] leading-relaxed text-graphite-faint">{t.privacy}</p>
+      <p className="mt-5 text-[0.62rem] leading-relaxed text-graphite-faint">{placeId && shared ? copy.memory.shared : t.privacy}</p>
     </form>
   )
 }

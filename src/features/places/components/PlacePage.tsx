@@ -48,6 +48,7 @@ export function PlaceView({
       extras={extras}
       progress={visit?.progress ?? null}
       heroPriority
+      placeId={place.id}
       compact={compact}
       scope={{
         placeId: place.id,

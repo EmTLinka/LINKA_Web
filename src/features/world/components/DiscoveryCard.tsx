@@ -19,9 +19,10 @@ type DiscoveryCardProps = {
 /**
  * A place, opened from the map — the Place Sheet on warm paper.
  *
- * Before a visit it carries nothing personal: no date, no :))), no photograph
- * of theirs, and it never says "visited". Looking is not touching. After a
- * visit, the same sheet opens from the place's Memory Card and says when.
+ * Before a visit it carries nothing of the viewer's own: no date, no :))),
+ * and it never says "visited". A memory someone marked public can show its
+ * photograph and its words here. Looking is not touching. After a visit, the
+ * same sheet opens from the place's Memory Card and says when.
  *
  * It rises from the navigation rather than hanging from its mark, because it
  * carries more than a name; the map above stays in view.
@@ -69,6 +70,7 @@ export default function DiscoveryCard({ place, shown, onClose, visitedOn = null,
                 : null),
           }}
           visitedOn={visitedOn}
+          placeId={place.id}
           extras={extras}
           progress={place.progress ?? null}
           tabIndex={tab}

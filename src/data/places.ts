@@ -59,7 +59,7 @@ export type PlaceExtras = {
 }
 
 const NO_EXTRAS: PlaceExtras = { visitors: null, events: [], safety: [], safetyFailed: false, loaded: false }
-/** Only real places are asked about; dev-preview samples ("preview-sado") are not. */
+/** Only real place ids are asked about. A non-uuid never reaches the database. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** Today's visitors change through the day: asked again after a minute. */
 const EXTRAS_TTL_MS = 60_000
