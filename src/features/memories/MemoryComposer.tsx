@@ -89,7 +89,7 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
     keep(saved.memory)
     setMoodSkipped(saved.moodSkipped)
     setShareSkipped(saved.shareSkipped)
-    if (!saved.shareSkipped) setShared(saved.memory.visibility === 'public')
+    setShared(saved.memory.visibility === 'public')
     if (saved.recovered) {
       // The visit already had a memory this form had not loaded: show what it now holds.
       setNote(saved.memory.note ?? '')

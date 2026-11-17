@@ -199,7 +199,8 @@ function PastMemoryForm({ existing }: { existing: MemoryRecord | null }) {
         }
       }
       // A photo that could not be added can be added again on the page itself, which says so.
-      const shareSkipped = Boolean(placeId && shared && memory.visibility !== 'public')
+      const asked = placeId && shared ? 'public' : 'private'
+      const shareSkipped = Boolean(placeId && memory.visibility !== asked)
       navigate(`/moments/${memory.id}`, {
         replace: true,
         state: failed > 0 || shareSkipped ? { photosFailed: failed || undefined, shareSkipped } : null,

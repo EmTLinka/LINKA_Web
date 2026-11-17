@@ -174,6 +174,9 @@ export type VisitRef = { visitId: string; placeId: string }
  *
  * If the server cannot store a mood yet, the note and photos are still saved
  * and the caller is told (`moodSkipped`) so it can say so — never silently.
+ * A rejected visibility write is retried without that column, which leaves the
+ * stored value. `shareSkipped` is true when that value is not the one asked for,
+ * including a public memory that could not be made private.
  */
 export async function saveMemory(
   existing: MemoryRecord | null,
@@ -220,7 +223,9 @@ export async function saveMemory(
   let shareSkipped = false
   if (isVisibilityRejected(error) && fields.visibility) {
     ;({ data, error } = await write(!moodSkipped, false))
-    shareSkipped = fields.visibility === 'public'
+    // Omitting the column keeps the stored value. A new row defaults to private;
+    // an existing public row stays public. Either can differ from what was asked.
+    shareSkipped = !error && (data as { visibility?: string } | null)?.visibility !== fields.visibility
   }
   if (error) throw error
   return { memory: data as unknown as MemoryRecord, moodSkipped, shareSkipped, recovered }
@@ -331,6 +336,8 @@ export async function savePastMemory(existing: MemoryRecord | null, input: PastM
     return query.select(MEMORY_COLUMNS).single()
   }
   let { data, error } = await write(true)
+  // A rejected visibility write is omitted, so the stored value remains. The
+  // caller compares it with what was asked and says so when they differ.
   if (isVisibilityRejected(error)) ({ data, error } = await write(false))
   if (error) throw error
   return data as unknown as MemoryRecord
