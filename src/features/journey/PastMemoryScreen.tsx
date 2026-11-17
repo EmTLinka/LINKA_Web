@@ -189,7 +189,7 @@ function PastMemoryForm({ existing }: { existing: MemoryRecord | null }) {
         setUploaded(0)
         for (const [i, photo] of photos.entries()) {
           try {
-            const row = await addMemoryPhoto(memory, user.id, photo.file, memory.memory_photos.length)
+            const row = await addMemoryPhoto(memory, photo.file, memory.memory_photos.length)
             memory = { ...memory, cover_photo_id: memory.cover_photo_id ?? row.id, memory_photos: [...memory.memory_photos, row] }
             memorySaved(user.id, memory)
           } catch {

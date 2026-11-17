@@ -234,19 +234,24 @@ export async function saveMemory(
 const BUCKET = 'memory-photos'
 
 /**
- * Upload one photo into the user's own folder and attach it to the memory:
- * the photo (EXIF stripped on this device) and, next to it, a thumbnail for
- * lists and the map. Becomes the cover if the memory has none.
+ * Upload one photo and attach it to the memory: the photo (EXIF stripped on
+ * this device) and, next to it, a thumbnail for lists and the map. Becomes
+ * the cover if the memory has none.
+ *
+ * The object key is `m/<memory id>/<file>`. It is not the author's account
+ * id: a public place is given this key, and the same author at two places
+ * must not be recognisable from it. Older photographs keep a key that starts
+ * with the account id; those stay on the author's own row and are not offered
+ * to the place.
  */
 export async function addMemoryPhoto(
   memory: MemoryRecord,
-  userId: string,
   file: File,
   position = memory.memory_photos.length,
 ): Promise<MemoryPhotoRow> {
   const supabase = await getSupabase()
   const { blob, width, height, thumb } = await preparePhoto(file)
-  const path = `${userId}/${memory.id}/${randomName()}.jpg`
+  const path = `m/${memory.id}/${randomName()}.jpg`
 
   const upload = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', upsert: false })
   if (upload.error) throw upload.error

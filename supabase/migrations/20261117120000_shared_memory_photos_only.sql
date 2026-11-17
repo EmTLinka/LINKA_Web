@@ -41,7 +41,7 @@ returns table (
   storage_path text,
   width integer,
   height integer,
-  position smallint
+  "position" smallint
 )
 language sql
 stable

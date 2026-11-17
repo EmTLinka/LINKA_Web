@@ -116,7 +116,7 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
     try {
       // A photo belongs to a memory, so the memory is saved first (with the mood and note so far).
       const target = memory ?? (await persist())
-      const photo = await addMemoryPhoto(target, user.id, file)
+      const photo = await addMemoryPhoto(target, file)
       // From the latest state, not `target`: several photos may be uploading at once.
       setMemory((current) => {
         const base = current ?? target
