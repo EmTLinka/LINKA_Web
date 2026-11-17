@@ -9,7 +9,8 @@ import {
   type WorldPlace,
   type WorldSnapshot,
 } from '@/features/world/model/types'
-import { regionProgress, useJourneyModel, type Journey, type RegionProgress } from '@/data/journey'
+import { regionProgress, useJourneyModel, useMyTouchFixes, type Journey, type RegionProgress } from '@/data/journey'
+import { checkpointsFromFixes } from '@/features/world/touchDepth'
 import { regionOf, type PlaceIndex } from '@/data/places'
 import { useLocale } from '@/lib/i18n/LocaleContext'
 
@@ -27,21 +28,24 @@ export type MyWorldData = {
  *
  * Published places are the geography anyone can discover; colour comes only
  * from the user's verified visits (`journey.verified`), never from looking,
- * and never from anything that is not a physical Touch. A guest sees the
- * whole geography and no colour.
+ * and never from anything that is not a physical Touch. How dark that green
+ * is comes from how many times each Touch Point was recorded. A guest sees
+ * the whole geography and no colour.
  */
 export function useMyWorld(): MyWorldData {
   const { user, loading: authLoading } = useAuth()
   const { locale } = useLocale()
-  // Colour needs visits only: the map never asks for memories.
+  // Colour needs visits, and the shade needs the touch counts. Memories are not on the map.
   const { journey, index, error } = useJourneyModel({ withMemories: false })
+  const touches = useMyTouchFixes()
   const signedIn = Boolean(user)
 
   return useMemo(() => {
-    const ready = !authLoading && index !== null && (!signedIn || journey !== null)
+    const touchesSettled = touches.data !== undefined || touches.error != null
+    const ready = !authLoading && index !== null && (!signedIn || (journey !== null && touchesSettled))
     if (!ready) return { snapshot: EMPTY_WORLD, discovery: NO_DISCOVERY, ready: false, error }
 
-    const snapshot = journey ? worldOf(journey) : EMPTY_WORLD
+    const snapshot = journey ? worldOf(journey, touches.data ?? []) : EMPTY_WORLD
     // Every discoverable place, visited or not: MyWorld draws only the unvisited
     // ones as ○, but a visited place's card opens the same sheet.
     const discovery = index.all
@@ -50,11 +54,11 @@ export function useMyWorld(): MyWorldData {
       .map((p) => toDiscovery(p, index, journey ? regionProgress(p, index, journey.verified.placeIds, locale) : null, locale))
 
     return { snapshot, discovery, ready: true, error: null }
-  }, [authLoading, index, signedIn, journey, locale, error])
+  }, [authLoading, index, signedIn, journey, touches.data, touches.error, locale, error])
 }
 
-/** One coloured place per verified place, however many visits and touches it has had. */
-function worldOf(journey: Journey): WorldSnapshot {
+/** One mark per verified place. The green itself is one neighbourhood per Touch Point. */
+function worldOf(journey: Journey, fixes: Parameters<typeof checkpointsFromFixes>[0]): WorldSnapshot {
   const places: WorldPlace[] = []
   // In the order the places were first reached — the order the map has always
   // drawn them in (where marks overlap, the later one lies on top).
@@ -73,7 +77,13 @@ function worldOf(journey: Journey): WorldSnapshot {
       firstTouchedOn: first.local_date,
     })
   }
-  return places.length === 0 ? EMPTY_WORLD : { places, recentPlaceId: journey.verified.latest?.place_id ?? null }
+  return places.length === 0
+    ? EMPTY_WORLD
+    : {
+        places,
+        recentPlaceId: journey.verified.latest?.place_id ?? null,
+        checkpoints: checkpointsFromFixes(fixes, places),
+      }
 }
 
 function toDiscovery(place: LocalizedPlace, index: PlaceIndex, progress: RegionProgress, locale: string): DiscoveryPlace {

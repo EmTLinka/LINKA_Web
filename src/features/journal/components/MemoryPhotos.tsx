@@ -63,7 +63,7 @@ export default function MemoryPhotos({
       try {
         const target = latest.current ?? (await ensureMemory())
         latest.current = target
-        const photo = await addMemoryPhoto(target, user.id, item.file, Math.max(-1, ...target.memory_photos.map((p) => p.position)) + 1)
+        const photo = await addMemoryPhoto(target, item.file, Math.max(-1, ...target.memory_photos.map((p) => p.position)) + 1)
         const base = latest.current ?? target
         keep({ ...base, cover_photo_id: base.cover_photo_id ?? photo.id, memory_photos: [...base.memory_photos, photo] })
         setUploads((list) => list.filter((u) => u.key !== item.key))

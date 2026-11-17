@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 
 import { useAuth } from '@/features/auth/useAuth'
 import { fetchMyMemories, type MemoryRecord } from '@/features/memories/api'
-import { fetchMyVisits, type VisitRow } from '@/features/places/api'
+import { fetchMyTouchFixes, fetchMyVisits, type VisitRow } from '@/features/places/api'
 import type { LocalizedPlace } from '@/features/places/localize'
 import { fetchMySuggestions, type MySuggestionRow } from '@/features/community/api'
 import { regionOf, usePlaces, type PlaceIndex } from '@/data/places'
@@ -16,9 +16,10 @@ import type { Locale } from '@/lib/i18n/locale'
  *                TouchEvent ─┼─ Visit  (one per place per local day: the proof of presence)
  *                TouchEvent ─┘    └── Memory (mood · note · photos: what they kept of it)
  *
- * TouchEvents are evidence and analytics; nothing a person sees is counted
- * from them. Every screen reads the journey from `buildJourney`, so the
- * relationship is built in exactly one place.
+ * Touch events do not decide which places exist on the map — visits do.
+ * Their count only darkens the green around each Touch Point, and that
+ * weighing lives in `touchDepth`, not here. Every screen reads the journey
+ * from `buildJourney`, so the relationship is built in exactly one place.
  *
  *                Memory (kind 'past') — a journal entry: a place and a time the
  *                person records themselves. No visit, no touch.
@@ -33,6 +34,7 @@ import type { Locale } from '@/lib/i18n/locale'
 
 const keys = {
   visits: (userId: string) => privateKey(userId, 'visits'),
+  touches: (userId: string) => privateKey(userId, 'touches'),
   memories: (userId: string) => privateKey(userId, 'memories'),
   suggestions: (userId: string) => privateKey(userId, 'suggestions'),
 }
@@ -40,6 +42,12 @@ const keys = {
 export function useMyVisits() {
   const { user } = useAuth()
   return useResource(user ? keys.visits(user.id) : null, fetchMyVisits)
+}
+
+/** Recorded touches, so the map can weigh how dark each Touch Point is. */
+export function useMyTouchFixes() {
+  const { user } = useAuth()
+  return useResource(user ? keys.touches(user.id) : null, fetchMyTouchFixes)
 }
 
 export function useMyMemories(enabled = true) {
@@ -52,9 +60,10 @@ export function useMySuggestions() {
   return useResource(user ? keys.suggestions(user.id) : null, fetchMySuggestions)
 }
 
-/** A Touch was recorded: the visit list may have a new or longer visit. */
+/** A Touch was recorded: the visit list and the per-point counts may have changed. */
 export function visitsChanged(userId: string) {
   invalidate(keys.visits(userId))
+  invalidate(keys.touches(userId))
 }
 
 /** A memory was saved: show it everywhere at once, without a refetch. */

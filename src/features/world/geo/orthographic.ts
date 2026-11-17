@@ -41,6 +41,24 @@ export function project(frame: WorldFrame, lng: number, lat: number): ScreenPoin
   return { x: frame.cx + x * frame.r, y: frame.cy - y * frame.r, visible: cosC >= 0 }
 }
 
+/** The geographic point under a screen pixel, or null when that pixel is off the globe. */
+export function unproject(frame: WorldFrame, x: number, y: number): { lng: number; lat: number } | null {
+  const px = (x - frame.cx) / frame.r
+  const py = (frame.cy - y) / frame.r
+  const ρ2 = px * px + py * py
+  if (ρ2 > 1) return null
+  const ρ = Math.sqrt(ρ2)
+  if (ρ === 0) return { lng: frame.lng0, lat: frame.lat0 }
+
+  const c = Math.asin(ρ)
+  const φ0 = frame.lat0 * RAD
+  const cosC = Math.cos(c)
+  const sinC = Math.sin(c)
+  const lat = Math.asin(cosC * Math.sin(φ0) + (py * sinC * Math.cos(φ0)) / ρ) / RAD
+  const lng = frame.lng0 + Math.atan2(px * sinC, ρ * Math.cos(φ0) * cosC - py * Math.sin(φ0) * sinC) / RAD
+  return { lng, lat }
+}
+
 /**
  * Choose the frame for a set of places.
  *

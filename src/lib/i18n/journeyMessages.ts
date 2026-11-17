@@ -104,6 +104,11 @@ export type JourneyMessages = {
     saved: string
     failed: string
     private: string
+    /** Offer this memory's photographs and note on the place profile. */
+    share: string
+    /** Shown while the memory is marked public. */
+    shared: string
+    shareNotSaved: string
     photoAlt: (place: string) => string
     closePhoto: string
     moodNotSaved: string
@@ -242,6 +247,9 @@ const en: JourneyMessages = {
     saved: 'Saved to your Moments.',
     failed: 'We could not save it. Please try again.',
     private: 'Only you can see this.',
+    share: 'Show this memory on the place profile',
+    shared: 'Anyone looking at this place can see it.',
+    shareNotSaved: 'Your memory is saved. Whether it shows on the place profile could not be saved yet.',
     photoAlt: (place) => `Your photo at ${place}`,
     closePhoto: 'Close photo',
     moodNotSaved: 'Your note and photos are saved. The mood could not be saved yet.',
@@ -389,6 +397,9 @@ const ja: JourneyMessages = {
     saved: 'モーメントに保存しました。',
     failed: '保存できませんでした。もう一度お試しください。',
     private: 'あなただけが見られます。',
+    share: 'この思い出を、場所のプロフィールに載せる',
+    shared: 'この場所を見る人にも見えます。',
+    shareNotSaved: '思い出は保存しました。プロフィールで公開するかどうかはまだ保存できませんでした。',
     photoAlt: (place) => `${place}で撮った写真`,
     closePhoto: '写真を閉じる',
     moodNotSaved: 'メモと写真は保存しました。気分はまだ保存できませんでした。',
@@ -536,6 +547,9 @@ const zhHans: JourneyMessages = {
     saved: '已保存到瞬间。',
     failed: '保存失败，请重试。',
     private: '仅你可见。',
+    share: '把这段回忆显示在地点主页上',
+    shared: '看这个地点的人也能看到。',
+    shareNotSaved: '回忆已保存，但暂时无法保存是否显示在地点主页上。',
     photoAlt: (place) => `你在${place}拍的照片`,
     closePhoto: '关闭照片',
     moodNotSaved: '文字和照片已保存，心情暂时无法保存。',

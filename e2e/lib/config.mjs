@@ -40,7 +40,7 @@ export const POINTS = {
 
 /**
  * A photo already in the repository, used as the "user's photo" in upload tests
- * (Wikimedia Commons, Totti, CC BY-SA 4.0 — see src/features/world/preview/worldPreviews.ts).
+ * (Wikimedia Commons, "Nipponia nippon Sado Toki Hogo Center 1", Totti, CC BY-SA 4.0).
  */
 export const PHOTO = `${ROOT}src/features/world/preview/photos/toki-memory.jpg`
 

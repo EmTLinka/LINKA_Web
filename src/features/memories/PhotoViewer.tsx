@@ -44,8 +44,10 @@ export default function PhotoViewer({ src, alt, width, height, onClose, nav }: P
     const onPop = () => onCloseRef.current()
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') window.history.back()
+      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+      event.preventDefault()
       if (event.key === 'ArrowLeft') navRef.current?.onPrev()
-      if (event.key === 'ArrowRight') navRef.current?.onNext()
+      else navRef.current?.onNext()
     }
     window.addEventListener('popstate', onPop)
     window.addEventListener('keydown', onKey)
@@ -81,23 +83,31 @@ export default function PhotoViewer({ src, alt, width, height, onClose, nav }: P
         width={width}
         height={height}
         draggable={false}
-        className="max-h-[88dvh] max-w-[96vw] object-contain select-none"
+        className={nav && nav.count > 1 ? 'max-h-[calc(100dvh-7.5rem)] max-w-[96vw] object-contain select-none' : 'max-h-[88dvh] max-w-[96vw] object-contain select-none'}
         style={{ transform: `translateY(${drag}px)`, transition: drag === 0 ? 'transform 200ms ease-out' : 'none' }}
       />
       {nav && nav.count > 1 && (
-        <>
-          <p className="absolute inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] text-center text-[0.7rem] tabular-nums tracking-[0.1em] text-white/75">{nav.label}</p>
-          {nav.index > 0 && (
-            <button type="button" onClick={nav.onPrev} aria-label="‹" className="absolute left-2 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-[1.1rem] text-white">
-              ‹
-            </button>
-          )}
-          {nav.index < nav.count - 1 && (
-            <button type="button" onClick={nav.onNext} aria-label="›" className="absolute right-2 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-[1.1rem] text-white">
-              ›
-            </button>
-          )}
-        </>
+        <div className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-10 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={nav.onPrev}
+            disabled={nav.index <= 0}
+            aria-label={copy.place.prevPhoto}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-[1.6rem] leading-none text-white outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-30"
+          >
+            ‹
+          </button>
+          <p className="text-center text-[0.7rem] tabular-nums tracking-[0.1em] text-white/75">{nav.label}</p>
+          <button
+            type="button"
+            onClick={nav.onNext}
+            disabled={nav.index >= nav.count - 1}
+            aria-label={copy.place.nextPhoto}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full bg-white/15 text-[1.6rem] leading-none text-white outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-30"
+          >
+            ›
+          </button>
+        </div>
       )}
       <button
         ref={closeRef}

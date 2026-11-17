@@ -26,7 +26,9 @@ import {
 } from '@/features/world/geo/atlas'
 import { boundsPoints, fitPoints, smoothstep, type View } from '@/features/world/geo/camera'
 import { kmToPx, variantOf } from '@/features/world/geo/draw'
-import { frameWorld, landPaths, project } from '@/features/world/geo/orthographic'
+import { touchDepths } from '@/features/world/touchDepth'
+import { frameWorld, landPaths, project, unproject } from '@/features/world/geo/orthographic'
+import { areaAt, countryAt } from '@/features/world/geo/regions'
 import {
   NO_DISCOVERY,
   type DiscoveryPlace,
@@ -94,14 +96,16 @@ const noop = () => {}
  * physically touched. Three states read at a glance, without a legend:
  *
  *   ○      discoverable — there, readable, open to explore, never counted
- *   :)))   touched      — a verified physical visit, and colour around it
+ *   :)))   touched      — a verified physical visit, and green around its Touch Point
  *   :))) + photograph   — remembered: a real moment laid on the drawn map
  *
- * Two gestures, kept apart. A Touch Point (or ○) opens its card. An area —
- * its wash, or its name — is the way into it.
+ * On the world, a tap on a country's land — or on a checkpoint in it — goes
+ * into that country. On a country, a tap on an island that has a map, or on
+ * a checkpoint there, goes in. Close in, a checkpoint opens its profile.
  *
- * It does not know where its places come from: production passes the user's
- * own (today, none) and the dev preview passes its scenarios.
+ * It does not know where its places come from. Both home and the dev preview
+ * pass published places from the database, and visits only where someone has
+ * actually touched. The coastlines are the drawings, not the database.
  */
 export default function MyWorld({
   snapshot,
@@ -208,16 +212,37 @@ export default function MyWorld({
     [belonging, view, width, height],
   )
 
-  // The globe's washes are painted on the globe, so they grow as it comes closer.
-  const zoom = view ? view.r / worldFrame.r : 1
-  const blooms: Bloom[] = marks.map(({ place, at }) => ({
-    id: place.id,
-    x: at.x,
-    y: at.y,
-    r: Math.min(150, Math.max(54, worldFrame.r * (places.length === 1 ? 0.3 : 0.24))) * zoom,
-    variant: variantOf(place.id),
-    open: place.id !== arrivingId || (phase !== 'rest' && phase !== 'mark'),
-  }))
+  // One green neighbourhood per Touch Point. Shade is relative to the busiest
+  // point and capped, and lighter ones are painted first so overlap cannot
+  // add past that cap. The radius stays a spot: on the globe a real kilometre
+  // is smaller than a pixel, so this is the smallest mark that still reads.
+  const painted = useMemo(() => {
+    const depths = touchDepths(snapshot.checkpoints.map((checkpoint) => checkpoint.touches))
+    return snapshot.checkpoints
+      .map((checkpoint, index) => ({ checkpoint, depth: depths[index] ?? 0 }))
+      .sort((a, b) => a.depth - b.depth)
+  }, [snapshot.checkpoints])
+
+  const globeReach = Math.min(18, Math.max(12, worldFrame.r * 0.04))
+  const blooms: Bloom[] =
+    view === null
+      ? []
+      : painted.flatMap(({ checkpoint, depth }) => {
+          const at = project(view, checkpoint.lng, checkpoint.lat)
+          if (!at.visible || !onScreen(at, width, height)) return []
+          return [
+            {
+              id: checkpoint.id,
+              placeId: checkpoint.placeId,
+              x: at.x,
+              y: at.y,
+              r: globeReach,
+              variant: variantOf(checkpoint.id),
+              open: checkpoint.placeId !== arrivingId || (phase !== 'rest' && phase !== 'mark'),
+              depth,
+            },
+          ]
+        })
 
   const touchedAreas = useMemo(() => {
     const seen = new Map<string, { country: Country; area: LocalArea }>()
@@ -241,43 +266,54 @@ export default function MyWorld({
   const washes: (AreaWash & { country: Country; area: LocalArea })[] =
     view === null || countryOpacity === 0
       ? []
-      : touchedAreas.map(({ country, area }) => {
-          const at = project(view, area.reveal.centre.lng, area.reveal.centre.lat)
-          return {
-            id: area.id,
-            country,
-            area,
-            x: at.x,
-            y: at.y,
-            r: Math.max(area.reveal.minPx, kmToPx(view, area.reveal.km)),
-            variant: variantOf(area.id),
-          }
+      : painted.flatMap(({ checkpoint, depth }) => {
+          const place = places.find((entry) => entry.id === checkpoint.placeId)
+          if (!place) return []
+          const country = countryOf(place)
+          const area = country ? areaOf(country, place) : null
+          if (!country || !area) return []
+          const at = project(view, checkpoint.lng, checkpoint.lat)
+          if (!at.visible) return []
+          return [
+            {
+              id: checkpoint.id,
+              country,
+              area,
+              x: at.x,
+              y: at.y,
+              // A neighbourhood on the country, not the whole island. Kilometres
+              // at this distance are only a few pixels, so the radius is capped
+              // in screen space as well.
+              r: Math.min(28, Math.max(12, kmToPx(view, 14))),
+              variant: variantOf(checkpoint.id),
+              depth,
+            },
+          ]
         })
 
-  const areaPlaces = useMemo(
-    () =>
-      shownArea
-        ? belonging.filter(({ area }) => area?.id === shownArea.id).map(({ place }) => place)
-        : [],
-    [shownArea, belonging],
-  )
-  const touchedIds = useMemo(() => new Set(areaPlaces.map(({ id }) => id)), [areaPlaces])
   const areaDiscovery = useMemo(() => {
     const country = shownArea ? COUNTRIES.find((c) => c.areas.some((a) => a.id === shownArea.id)) : null
     return country && shownArea
       ? discovery.filter((place) => areaOf(country, place)?.id === shownArea.id)
       : []
   }, [discovery, shownArea])
-  const discoverable = useMemo(
-    () =>
-      view === null || location.level !== 2
-        ? []
-        : areaDiscovery
-            .filter(({ id }) => !touchedIds.has(id))
-            .map((place) => ({ place, at: project(view, place.lng, place.lat) }))
-            .filter(({ at }) => at.visible && onScreen(at, width, height)),
-    [areaDiscovery, touchedIds, view, location.level, width, height],
-  )
+  // Published places from the database. Visited ones are the marks above;
+  // the rest are drawn at every scale, on the same hardcoded coast.
+  const discoverable = useMemo(() => {
+    if (view === null) return []
+    const visited = new Set(places.map((place) => place.id))
+    let candidates = discovery.filter(({ id }) => !visited.has(id))
+    if (location.level === 1) {
+      const countryId = location.country.id
+      candidates = candidates.filter((place) => countryOf(place)?.id === countryId)
+    } else if (location.level === 2) {
+      const inArea = new Set(areaDiscovery.map((place) => place.id))
+      candidates = candidates.filter((place) => inArea.has(place.id))
+    }
+    return candidates
+      .map((place) => ({ place, at: project(view, place.lng, place.lat) }))
+      .filter(({ at }) => at.visible && onScreen(at, width, height))
+  }, [areaDiscovery, discovery, location, places, view, width, height])
 
   // The journal's memories in this area, beside (never on) the land's colour.
   const areaMemories = useMemo(() => {
@@ -294,16 +330,17 @@ export default function MyWorld({
     [areaMemories, view, location.level, width, height],
   )
 
-  const pockets = useMemo<Pocket[]>(
-    () =>
-      areaPlaces.map((place) => ({
-        id: place.id,
-        lng: place.lng,
-        lat: place.lat,
-        variant: variantOf(place.id),
-      })),
-    [areaPlaces],
-  )
+  const pockets = useMemo<Pocket[]>(() => {
+    if (!shownArea) return []
+    return painted.flatMap(({ checkpoint }) => {
+      const place = places.find((entry) => entry.id === checkpoint.placeId)
+      if (!place) return []
+      const country = countryOf(place)
+      const area = country ? areaOf(country, place) : null
+      if (area?.id !== shownArea.id) return []
+      return [{ id: checkpoint.id, lng: checkpoint.lng, lat: checkpoint.lat, variant: variantOf(checkpoint.id) }]
+    })
+  }, [painted, shownArea, places])
 
   // ─── the card ───────────────────────────────────────────────────────────────
 
@@ -365,34 +402,57 @@ export default function MyWorld({
   const labelSides = new Map(localLabels.map(({ id, side }) => [id, side]))
 
   function handleStageClick(event: MouseEvent<HTMLDivElement>) {
-    if (selectedMark || openDiscovery) {
-      chooseTouched(null)
-      return
-    }
-
     const box = event.currentTarget.getBoundingClientRect()
     const x = event.clientX - box.left
     const y = event.clientY - box.top
-    const within = (c: { x: number; y: number }, r: number) => Math.hypot(x - c.x, y - c.y) < r
 
-    if (location.level === 0) {
-      const bloom = blooms.find((b) => within(b, b.r * 0.8))
-      const country = marks.find(({ place }) => place.id === bloom?.id)?.country
-      if (country) onEnter([country.id])
-    } else if (location.level === 1) {
-      const wash = washes.find((w) => w.area.map && within(w, w.r))
-      if (wash) onEnter([wash.country.id, wash.area.id])
-      else {
-        // An untouched area is entered by its name, or a tap close to it.
-        const quiet = countryAreas.find(({ area, touched }) => {
-          if (touched || !area.map || !view) return false
-          return within(project(view, area.reveal.centre.lng, area.reveal.centre.lat), 30)
-        })
-        if (quiet) onEnter([quiet.country.id, quiet.area.id])
+    if (view && location.level === 0) {
+      // The country's own waters, so a tap on the islands goes in. The name is only one of the ways.
+      const point = unproject(view, x, y)
+      const country = point && countryAt(COUNTRIES, point)
+      if (country) {
+        onEnter([country.id])
+        return
+      }
+    } else if (view && location.level === 1) {
+      const point = unproject(view, x, y)
+      const entered =
+        (point && areaAt(location.country.areas, point)) ??
+        location.country.areas.find((area) => area.map && aroundBounds(area.bounds, view, x, y, 48))
+      if (entered?.map) {
+        onEnter([location.country.id, entered.id])
+        return
       }
     }
 
+    if (selectedMark || openDiscovery || sheetId) {
+      chooseTouched(null)
+      setSheetId(null)
+      return
+    }
     chooseNothing()
+  }
+
+  /** The profile, straight from the circle. A place with no profile keeps its small card. */
+  function openProfile(placeId: string) {
+    if (!discovery.some(({ id }) => id === placeId)) {
+      chooseTouched(selectedId === placeId ? null : placeId)
+      return
+    }
+    chooseTouched(null)
+    setSheetId(sheetId === placeId ? null : placeId)
+  }
+
+  /** Where a checkpoint leads, when it is a way further in rather than a card. */
+  function wayIn(place: { lng: number; lat: number }): { path: WorldPath; name: string; nameLatin: string } | null {
+    const country = countryOf(place)
+    if (!country) return null
+    if (location.level === 0) return { path: [country.id], name: country.name, nameLatin: country.nameLatin }
+    if (location.level === 1) {
+      const area = areaOf(country, place)
+      if (area?.map) return { path: [country.id, area.id], name: area.name, nameLatin: area.nameLatin }
+    }
+    return null
   }
 
   return (
@@ -456,19 +516,24 @@ export default function MyWorld({
         {(showVerified || location.level !== 2 ? marks : []).map(({ place, at }) => {
           const isArriving = place.id === arrivingId
           const isShown = !isArriving || phase !== 'rest'
-          const isSelected = place.id === selectedId && selectedMark !== null
+          const isSelected = (place.id === selectedId && selectedMark !== null) || sheetId === place.id
+          const into = wayIn(place)
 
           return (
             <button
               key={place.id}
               type="button"
               aria-pressed={isSelected}
-              aria-label={copy.a11y.place(
-                place.name,
-                place.locality,
-                formatCalendarDate(place.firstTouchedOn ?? place.firstTouchedAt, locale),
-              )}
-              onClick={() => chooseTouched(isSelected ? null : place.id)}
+              aria-label={
+                into
+                  ? copy.a11y.enter(into.name, into.nameLatin)
+                  : copy.a11y.place(
+                      place.name,
+                      place.locality,
+                      formatCalendarDate(place.firstTouchedOn ?? place.firstTouchedAt, locale),
+                    )
+              }
+              onClick={() => (into ? onEnter(into.path) : openProfile(place.id))}
               style={{ left: at.x, top: at.y }}
               className={cn(
                 'absolute flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full',
@@ -494,12 +559,16 @@ export default function MyWorld({
               type="button"
               aria-pressed={isOpen}
               aria-label={copy.a11y.discoverable(place.name, place.nameLatin)}
-              onClick={() => chooseDiscovery(isOpen ? null : place.id)}
+              onClick={() => {
+                const into = wayIn(place)
+                if (into) onEnter(into.path)
+                else chooseDiscovery(isOpen ? null : place.id)
+              }}
               style={{ left: at.x, top: at.y }}
               className={cn(
                 'absolute flex size-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full',
                 'transition-opacity duration-700 ease-calm outline-none focus-visible:ring-1 focus-visible:ring-graphite/30',
-                isResolved ? 'opacity-100 delay-300' : 'pointer-events-none opacity-0',
+                isSettled ? 'opacity-100 delay-300' : 'pointer-events-none opacity-0',
               )}
             >
               <DiscoveryMark selected={isOpen} />
@@ -526,13 +595,8 @@ export default function MyWorld({
         {location.level === 1 &&
           view &&
           countryAreas.map(({ country, area, touched }) => {
-            const wash = washes.find((w) => w.id === area.id)
-            const anchor = wash ?? project(view, area.reveal.centre.lng, area.reveal.centre.lat)
-            const gap = wash
-              ? area.labelSide === 'below'
-                ? wash.r * 0.62
-                : wash.r * 0.72
-              : 12
+            const anchor = project(view, area.reveal.centre.lng, area.reveal.centre.lat)
+            const gap = area.labelSide === 'below' ? 14 : 18
             return (
               <MapLabel
                 key={area.id}
@@ -582,7 +646,7 @@ export default function MyWorld({
                 seed={place.id}
                 shown={isResolved}
                 label={copy.a11y.photo(place.name)}
-                onOpen={() => chooseTouched(place.id)}
+                onOpen={() => openProfile(place.id)}
               />
             ))}
 
@@ -699,6 +763,22 @@ function countryBox(width: number, height: number) {
 /** The island, with room around it. */
 function localBox(width: number, height: number) {
   return { x0: 46, y0: 138, x1: width - 46, y1: height - 112 }
+}
+
+/** A tap on the island, with a margin so the small shape is not the only target. */
+function aroundBounds(
+  bounds: readonly [number, number, number, number],
+  frame: View,
+  x: number,
+  y: number,
+  pad: number,
+): boolean {
+  const [west, south, east, north] = bounds
+  const corners = [project(frame, west, south), project(frame, east, south), project(frame, east, north), project(frame, west, north)]
+  if (corners.some((corner) => !corner.visible)) return false
+  const xs = corners.map((corner) => corner.x)
+  const ys = corners.map((corner) => corner.y)
+  return x >= Math.min(...xs) - pad && x <= Math.max(...xs) + pad && y >= Math.min(...ys) - pad && y <= Math.max(...ys) + pad
 }
 
 function onScreen(at: { x: number; y: number }, width: number, height: number): boolean {

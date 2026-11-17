@@ -327,5 +327,5 @@ export const SADO_MAP: LocalMapData = {
     return (fields ??= layFields())
   },
   motifs: [{ kind: 'toki', lng: 138.412, lat: 38.086 }],
-  pocketKm: 10.5,
+  pocketKm: 3.5,
 }

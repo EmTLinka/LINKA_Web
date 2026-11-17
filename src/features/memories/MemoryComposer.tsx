@@ -11,6 +11,7 @@ import {
   type MemoryRecord,
   type VisitRef,
 } from '@/features/memories/api'
+import { memoryCanSave } from '@/features/memories/canSave'
 import PhotoViewer from '@/features/memories/PhotoViewer'
 import { cn } from '@/lib/cn'
 import { MOOD_EMOJI, MOODS, type Mood } from '@/lib/i18n/journeyMessages'
@@ -43,6 +44,8 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
   const [promptIndex, setPromptIndex] = useState(0)
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle')
   const [moodSkipped, setMoodSkipped] = useState(false)
+  const [shareSkipped, setShareSkipped] = useState(false)
+  const [shared, setShared] = useState(false)
   const [uploads, setUploads] = useState<Upload[]>([])
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [viewing, setViewing] = useState<MemoryPhotoRow | null>(null)
@@ -61,6 +64,7 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
     if (!edited) {
       setMood(known.mood ?? null)
       setNote(known.note ?? '')
+      setShared(known.visibility === 'public')
     }
   }
 
@@ -82,9 +86,11 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
   }, [photoPaths])
 
   async function persist(): Promise<MemoryRecord> {
-    const saved = await saveMemory(memory, visit, { note, mood })
+    const saved = await saveMemory(memory, visit, { note, mood, visibility: shared ? 'public' : 'private' })
     keep(saved.memory)
     setMoodSkipped(saved.moodSkipped)
+    setShareSkipped(saved.shareSkipped)
+    setShared(saved.memory.visibility === 'public')
     if (saved.recovered) {
       // The visit already had a memory this form had not loaded: show what it now holds.
       setNote(saved.memory.note ?? '')
@@ -110,7 +116,7 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
     try {
       // A photo belongs to a memory, so the memory is saved first (with the mood and note so far).
       const target = memory ?? (await persist())
-      const photo = await addMemoryPhoto(target, user.id, file)
+      const photo = await addMemoryPhoto(target, file)
       // From the latest state, not `target`: several photos may be uploading at once.
       setMemory((current) => {
         const base = current ?? target
@@ -153,6 +159,12 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
   }
 
   const prompt = copy.memory.prompts[promptIndex % copy.memory.prompts.length]
+  const canSave = memoryCanSave({
+    note,
+    mood,
+    shared,
+    storedVisibility: memory ? (memory.visibility === 'public' ? 'public' : 'private') : null,
+  })
 
   return (
     <form onSubmit={submit} className="rounded-2xl bg-white/70 p-4 ring-1 ring-graphite/[0.08]">
@@ -269,13 +281,37 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
         <p role="alert" className="mt-2 text-[0.66rem] text-[#a0442c]">{copy.memory.uploadFailed}</p>
       )}
 
+      <label className="mt-4 flex items-start gap-2.5 text-[0.78rem] leading-snug text-graphite">
+        <input
+          type="checkbox"
+          checked={shared}
+          onChange={(event) => {
+            setShared(event.target.checked)
+            setEdited(true)
+            setState('idle')
+          }}
+          className="mt-0.5 size-4 shrink-0 accent-graphite"
+        />
+        <span>{copy.memory.share}</span>
+      </label>
+
       <div className="mt-4 flex items-center justify-between gap-3">
         <p aria-live="polite" className={cn('text-[0.64rem]', state === 'failed' ? 'text-[#a0442c]' : 'text-graphite-faint')}>
-          {state === 'saved' ? (moodSkipped ? copy.memory.moodNotSaved : copy.memory.saved) : state === 'failed' ? copy.memory.failed : copy.memory.private}
+          {state === 'saved'
+            ? shareSkipped
+              ? copy.memory.shareNotSaved
+              : moodSkipped
+                ? copy.memory.moodNotSaved
+                : copy.memory.saved
+            : state === 'failed'
+              ? copy.memory.failed
+              : shared
+                ? copy.memory.shared
+                : copy.memory.private}
         </p>
         <button
           type="submit"
-          disabled={state === 'saving' || (!note.trim() && !mood)}
+          disabled={state === 'saving' || !canSave}
           className="min-h-11 shrink-0 rounded-full bg-graphite px-5 text-[0.78rem] tracking-[0.06em] text-paper-lit outline-none disabled:opacity-35 focus-visible:ring-2 focus-visible:ring-graphite/40"
         >
           {state === 'saving' ? copy.memory.saving : copy.memory.save}

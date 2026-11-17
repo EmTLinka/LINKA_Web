@@ -1,10 +1,13 @@
 import { useId, type CSSProperties } from 'react'
 
 import type { LandPaths, WorldFrame } from '@/features/world/geo/orthographic'
+import { neighbourhoodGreen } from '@/features/world/touchDepth'
 
-/** One area of the world a touch has revealed. */
+/** One checkpoint's green on the globe. Small on purpose: the neighbourhood, not the country. */
 export type Bloom = {
   id: string
+  /** The place this Touch Point belongs to — what a tap on the bloom opens. */
+  placeId: string
   x: number
   y: number
   r: number
@@ -12,6 +15,8 @@ export type Bloom = {
   variant: number
   /** False while an arriving touch has not spread yet. */
   open: boolean
+  /** 0–1, already capped and relative. 1 is the darkest leaf this map allows. */
+  depth: number
 }
 
 type WorldGlobeProps = {
@@ -41,11 +46,10 @@ const tone = (token: string, opacity = 1): CSSProperties => ({
  * The world itself.
  *
  * Before any touch it is soft glass: a pale, translucent sphere with the land
- * only frosted into it, no coastline drawn. A touch does not highlight an
- * existing map — it lets a watercolor wash spread from that point, and the
- * geography resolves inside the wash: pale sea, pale land, a thin graphite
- * coast. Where touches sit close together their washes overlap and read as one
- * remembered region, which is the whole of "merging" at world scale.
+ * only frosted into it, no coastline drawn. A touch paints a small green
+ * neighbourhood around that Touch Point. More touches make that green darker,
+ * up to one leaf and no further. Where two neighbourhoods overlap, the busier
+ * one lies on top.
  */
 export default function WorldGlobe({
   width,
@@ -90,11 +94,13 @@ export default function WorldGlobe({
           <stop offset="1" style={tone('mist-deep', 0.9)} />
         </radialGradient>
 
-        <radialGradient id={id('wash')}>
-          <stop offset="0" style={tone('mist-deep', 0.62)} />
-          <stop offset="0.72" style={tone('mist-deep', 0.42)} />
-          <stop offset="1" style={tone('mist-deep', 0)} />
-        </radialGradient>
+        {blooms.map((bloom) => (
+          <radialGradient key={bloom.id} id={id(`wash-${svgId(bloom.id)}`)}>
+            <stop offset="0" stopColor={neighbourhoodGreen(bloom.depth)} stopOpacity="0.92" />
+            <stop offset="0.7" stopColor={neighbourhoodGreen(bloom.depth)} stopOpacity="0.62" />
+            <stop offset="1" stopColor={neighbourhoodGreen(bloom.depth)} stopOpacity="0" />
+          </radialGradient>
+        ))}
 
         <radialGradient id={id('pool')}>
           <stop offset="0" stopColor="#fff" />
@@ -106,7 +112,7 @@ export default function WorldGlobe({
         {EDGE_SEEDS.map((seed, i) => (
           <filter key={seed} id={id(`edge-${i}`)} x="-35%" y="-35%" width="170%" height="170%">
             <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="3" seed={seed} />
-            <feDisplacementMap in="SourceGraphic" scale="30" xChannelSelector="R" yChannelSelector="G" />
+            <feDisplacementMap in="SourceGraphic" scale="12" xChannelSelector="R" yChannelSelector="G" />
             <feGaussianBlur stdDeviation="1.6" />
           </filter>
         ))}
@@ -152,47 +158,29 @@ export default function WorldGlobe({
         {/* Untouched land: frosted into the glass, no line drawn. */}
         <LandFill land={land} fill="#ffffff" opacity={0.44} />
 
-        {/* Pigment: the wash each touch has left. Overlaps deepen, like paint. */}
+        {/* Green around each Touch Point. Lighter circles are painted first, so a busier one covers them. */}
         {blooms.map((bloom) => (
           <g key={bloom.id} style={bloomMotion(bloom, 0)}>
             <g filter={fx(`edge-${bloom.variant}`)}>
-              <circle cx={bloom.x} cy={bloom.y} r={bloom.r} fill={url('wash')} />
-              <circle
-                cx={bloom.x}
-                cy={bloom.y}
-                r={bloom.r * 0.93}
-                fill="none"
-                stroke="var(--color-mist-deep)"
-                strokeOpacity="0.5"
-                strokeWidth="1.1"
-              />
+              <circle cx={bloom.x} cy={bloom.y} r={bloom.r} fill={url(`wash-${svgId(bloom.id)}`)} />
             </g>
-            {/* A little warmth where the touch was. */}
-            <circle
-              cx={bloom.x}
-              cy={bloom.y}
-              r={bloom.r * 0.36}
-              fill="var(--color-sun)"
-              opacity="0.5"
-              filter={fx('soft')}
-            />
           </g>
         ))}
 
-        {/* Geography, resolving only inside what has been revealed. */}
+        {/* A little meadow inside each touch. The coast is drawn over the green, so a country keeps its shape. */}
         <g mask={url('reveal')}>
-          <LandFill land={land} fill="var(--color-meadow)" />
-          <path
-            d={land.coast}
-            fill="none"
-            stroke="var(--color-graphite)"
-            strokeOpacity="0.42"
-            strokeWidth="0.8"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            filter={fx('pen')}
-          />
+          <LandFill land={land} fill="var(--color-meadow)" opacity={0.55} />
         </g>
+        <path
+          d={land.coast}
+          fill="none"
+          stroke="var(--color-graphite)"
+          strokeOpacity="0.32"
+          strokeWidth="0.65"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          filter={fx('pen')}
+        />
 
         {/* One highlight on the glass. */}
         <ellipse
@@ -241,6 +229,10 @@ function LandFill({ land, fill, opacity }: { land: LandPaths; fill: string; opac
  * The geography's mask trails the pigment slightly, so the land resolves
  * inside a wash that is already there rather than arriving with it.
  */
+function svgId(value: string): string {
+  return value.replace(/[^A-Za-z0-9_-]/g, '')
+}
+
 function bloomMotion(bloom: Bloom, delayMs: number): CSSProperties {
   return {
     transformOrigin: `${bloom.x}px ${bloom.y}px`,

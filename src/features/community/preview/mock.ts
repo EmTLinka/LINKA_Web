@@ -12,8 +12,10 @@ import tokiMemory from '@/features/world/preview/photos/toki-memory.jpg'
  * nicknames) is invented for the prototype. Suggestions carry no photograph
  * — the prototype shows the drawn cover rather than borrow one. Journal
  * photos are the licensed place heroes (public/places, see
- * 20260929100100_place_heroes.sql) and the Commons photos listed in
- * world/preview/worldPreviews.ts. Reachable only from /preview/4c/*.
+ * 20260929100100_place_heroes.sql) and the Commons photos in
+ * world/preview/photos (toki-memory: Totti, CC BY-SA 4.0; toki-discovery:
+ * rhodnite, CC BY 2.0; kinzan-memory: Indiana jo, CC0). Reachable only
+ * from /preview/4c/*.
  */
 
 const hero = (slug: string) => `/places/${slug}-800.jpg`

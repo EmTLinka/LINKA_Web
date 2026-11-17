@@ -1,12 +1,13 @@
-import { useId, useMemo, type CSSProperties } from 'react'
+import { useId, useMemo } from 'react'
 
 import { getDetailedLand } from '@/features/world/geo/atlas'
 import { screenReach } from '@/features/world/geo/caps'
 import { clippedLand, screenRect } from '@/features/world/geo/draw'
 import type { WorldFrame } from '@/features/world/geo/orthographic'
+import { neighbourhoodGreen } from '@/features/world/touchDepth'
 
-/** A touched area, as a wash on screen. */
-export type AreaWash = { id: string; x: number; y: number; r: number; variant: number }
+/** A Touch Point's green neighbourhood, as a wash on screen. */
+export type AreaWash = { id: string; x: number; y: number; r: number; variant: number; depth: number }
 
 type CountryMapProps = {
   width: number
@@ -25,9 +26,8 @@ const EDGE_SEEDS = [5, 19, 37] as const
  *
  * The world is already there: every coast is drawn, in a light graphite line
  * on pale, colourless land and sea — readable, quiet, entirely present. What
- * a touch adds is colour. Where the user has physically been, the same
- * watercolour that marked the globe comes in — blue water, meadow land, a
- * little warmth — and that part of the country becomes theirs.
+ * a touch adds is green around that Touch Point. More touches there make the
+ * green darker, up to one leaf and no further.
  *
  *   The world is already there. Your experiences give it colour.
  */
@@ -77,11 +77,13 @@ export default function CountryMap({ width, height, frame, washes, opacity, movi
           <stop offset="1" stopColor="#fcfbf8" stopOpacity="0.72" />
         </radialGradient>
 
-        <radialGradient id={id('wash')}>
-          <stop offset="0" style={tone('mist-deep', 0.6)} />
-          <stop offset="0.7" style={tone('mist-deep', 0.38)} />
-          <stop offset="1" style={tone('mist-deep', 0)} />
-        </radialGradient>
+        {washes.map((wash) => (
+          <radialGradient key={wash.id} id={id(`wash-${svgId(wash.id)}`)}>
+            <stop offset="0" stopColor={neighbourhoodGreen(wash.depth)} stopOpacity="0.96" />
+            <stop offset="0.72" stopColor={neighbourhoodGreen(wash.depth)} stopOpacity="0.7" />
+            <stop offset="1" stopColor={neighbourhoodGreen(wash.depth)} stopOpacity="0" />
+          </radialGradient>
+        ))}
 
         <radialGradient id={id('pool')}>
           <stop offset="0" stopColor="#fff" />
@@ -123,60 +125,40 @@ export default function CountryMap({ width, height, frame, washes, opacity, movi
 
       <rect width={width} height={height} fill={url('sea')} />
 
-      {/* Land as it is: pale, and its coast in light pencil. */}
-      <path d={land.fill} fill="#fcfbf8" />
-      <path
-        d={land.coast}
-        fill="none"
-        stroke="var(--color-graphite)"
-        strokeOpacity="0.3"
-        strokeWidth="0.7"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        filter={fx('pen')}
-      />
+      {/* Land as it is: pale paper, so the coast — drawn last — is what names the country. */}
+      <path d={land.fill} fill="#f7f4ee" />
 
       <rect width={width} height={height} fill={url('haze')} />
 
       {washes.map((wash) => (
-        <g key={wash.id}>
-          <circle
-            cx={wash.x}
-            cy={wash.y}
-            r={wash.r}
-            fill={url('wash')}
-            filter={fx(`edge-${wash.variant}`)}
-          />
-          <circle
-            cx={wash.x}
-            cy={wash.y}
-            r={wash.r * 0.34}
-            fill="var(--color-sun)"
-            opacity="0.5"
-            filter={fx('soft')}
-          />
-        </g>
+        <circle
+          key={wash.id}
+          cx={wash.x}
+          cy={wash.y}
+          r={wash.r}
+          fill={url(`wash-${svgId(wash.id)}`)}
+          filter={fx(`edge-${wash.variant}`)}
+        />
       ))}
 
-      {/* What has been touched comes clear: land, and a coast drawn by hand. */}
+      {/* Meadow only inside a touch. The coast stays above the green, so the country keeps its shape. */}
       <g mask={url('reveal')}>
         <path d={land.fill} fill="var(--color-meadow)" />
-        <path
-          d={land.coast}
-          fill="none"
-          stroke="var(--color-graphite)"
-          strokeOpacity="0.46"
-          strokeWidth="0.85"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-          filter={fx('pen')}
-        />
       </g>
+      <path
+        d={land.coast}
+        fill="none"
+        stroke="var(--color-graphite)"
+        strokeOpacity="0.36"
+        strokeWidth="0.85"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        filter={fx('pen')}
+      />
     </svg>
   )
 }
 
-const tone = (token: string, opacity = 1): CSSProperties => ({
-  stopColor: `var(--color-${token})`,
-  stopOpacity: opacity,
-})
+function svgId(value: string): string {
+  return value.replace(/[^A-Za-z0-9_-]/g, '')
+}

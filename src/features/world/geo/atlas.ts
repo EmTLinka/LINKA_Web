@@ -32,7 +32,7 @@ export type LocalMapData = {
   /** Four corners each; `rows` is how many furrows are sketched across it. */
   fields: readonly { corners: readonly number[]; fill: 'meadow' | 'sun' | null; rows: number }[]
   motifs: readonly { kind: 'toki'; lng: number; lat: number }[]
-  /** How far around a touch the map reveals itself, km. */
+  /** How far around a Touch Point the local map turns green, km. */
   pocketKm: number
 }
 
