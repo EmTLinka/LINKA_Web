@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type TransitionEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type TransitionEvent } from 'react'
 
+import { useMyMemories } from '@/data/journey'
 import PhotoViewer from '@/features/memories/PhotoViewer'
 import PlaceHero from '@/features/places/components/PlaceHero'
 import type { Hero } from '@/features/places/localize'
-import { fetchPublicMemories, signedPhotoUrls, type PublicMemory } from '@/features/memories/api'
+import { fetchPublicMemories, signedPhotoUrls, type MemoryRecord, type PublicMemory } from '@/features/memories/api'
 import { cn } from '@/lib/cn'
 import { useMessages } from '@/lib/i18n/useMessages'
 
@@ -35,6 +36,7 @@ export default function PlaceGallery({
   overlay?: ReactNode
 }) {
   const copy = useMessages()
+  const mine = useMyMemories()
   const [memories, setMemories] = useState<PublicMemory[] | null>(null)
   /** Frame index. With several slides, 0 and the last frame are clones used only to wrap. */
   const [pos, setPos] = useState(0)
@@ -67,13 +69,16 @@ export default function PlaceGallery({
     }
   }, [placeId])
 
-  const slides = slidesOf(hero, memories)
+  const shown = useMemo(() => withOwnPublic(memories, mine.data, placeId), [memories, mine.data, placeId])
+  const slides = slidesOf(hero, shown)
   const count = slides.length
   const frames = framesOf(slides)
   const paths = slides.flatMap((slide) => (slide.kind === 'photo' ? [slide.path] : [])).join('|')
-  const [scope, setScope] = useState({ placeId, count })
+  // Count starts unknown, so the first paint also lands on the place's own
+  // photograph. Frame 0 is only a clone of the last memory photo.
+  const [scope, setScope] = useState({ placeId: '', count: -1 })
   if (scope.placeId !== placeId || scope.count !== count) {
-    if (scope.placeId !== placeId) setViewingKey(null)
+    if (scope.placeId !== placeId && scope.placeId !== '') setViewingKey(null)
     setScope({ placeId, count })
     setPos(count > 1 ? 1 : 0)
     setSliding(true)
@@ -308,6 +313,17 @@ function framesOf(slides: Slide[]): { key: string; slide: Slide }[] {
     ...slides.map((slide) => ({ key: slide.key, slide })),
     { key: `${first.key}-after`, slide: first },
   ]
+}
+
+/** The signed-in author's own public photographs, when the shared read has not listed them yet. */
+function withOwnPublic(shared: PublicMemory[] | null, mine: readonly MemoryRecord[] | undefined, placeId: string): PublicMemory[] | null {
+  const own = (mine ?? []).flatMap((memory) => {
+    if (memory.place_id !== placeId || memory.visibility !== 'public' || memory.memory_photos.length === 0) return []
+    return [{ id: memory.id, memory_photos: [...memory.memory_photos].sort((a, b) => a.position - b.position) }]
+  })
+  if (shared === null && own.length === 0) return null
+  const seen = new Set((shared ?? []).map((memory) => memory.id))
+  return [...(shared ?? []), ...own.filter((memory) => !seen.has(memory.id))]
 }
 
 function slidesOf(hero: Hero | null, memories: PublicMemory[] | null): Slide[] {

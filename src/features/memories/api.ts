@@ -336,10 +336,33 @@ export async function savePastMemory(existing: MemoryRecord | null, input: PastM
     return query.select(MEMORY_COLUMNS).single()
   }
   let { data, error } = await write(true)
-  // A rejected visibility write is omitted, so the stored value remains. The
-  // caller compares it with what was asked and says so when they differ.
+  // A rejected visibility write is omitted, so the stored value remains.
   if (isVisibilityRejected(error)) ({ data, error } = await write(false))
   if (error) throw error
+  const saved = data as unknown as MemoryRecord
+  // No LINKA place has no profile to offer the photographs to.
+  const wanted: MemoryVisibility = input.placeId ? (input.visibility ?? 'private') : 'private'
+  if (saved.visibility === wanted) return saved
+  // The combined write can drop `visibility` (the column was not granted on
+  // that statement) and still save the entry. A visit memory sets it with its
+  // own update, which is what makes those photographs appear on the place.
+  // Do the same here, so a journal entry asked to be public actually is.
+  const fixed = await setMemoryVisibility(saved.id, wanted)
+  return fixed ?? saved
+}
+
+/**
+ * Set only whether this memory's photographs are offered to its place.
+ * Returns null when the database refuses the column, leaving the stored value.
+ */
+export async function setMemoryVisibility(id: string, visibility: MemoryVisibility): Promise<MemoryRecord | null> {
+  const { data, error } = await (await getSupabase())
+    .from('memories')
+    .update({ visibility })
+    .eq('id', id)
+    .select(MEMORY_COLUMNS)
+    .single()
+  if (error || !data) return null
   return data as unknown as MemoryRecord
 }
 
