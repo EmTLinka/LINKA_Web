@@ -11,6 +11,7 @@ import {
   type MemoryRecord,
   type VisitRef,
 } from '@/features/memories/api'
+import { memoryCanSave } from '@/features/memories/canSave'
 import PhotoViewer from '@/features/memories/PhotoViewer'
 import { cn } from '@/lib/cn'
 import { MOOD_EMOJI, MOODS, type Mood } from '@/lib/i18n/journeyMessages'
@@ -158,6 +159,12 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
   }
 
   const prompt = copy.memory.prompts[promptIndex % copy.memory.prompts.length]
+  const canSave = memoryCanSave({
+    note,
+    mood,
+    shared,
+    storedVisibility: memory ? (memory.visibility === 'public' ? 'public' : 'private') : null,
+  })
 
   return (
     <form onSubmit={submit} className="rounded-2xl bg-white/70 p-4 ring-1 ring-graphite/[0.08]">
@@ -304,7 +311,7 @@ export default function MemoryComposer({ visit, placeName, withPhotos = true }: 
         </p>
         <button
           type="submit"
-          disabled={state === 'saving' || (!note.trim() && !mood)}
+          disabled={state === 'saving' || !canSave}
           className="min-h-11 shrink-0 rounded-full bg-graphite px-5 text-[0.78rem] tracking-[0.06em] text-paper-lit outline-none disabled:opacity-35 focus-visible:ring-2 focus-visible:ring-graphite/40"
         >
           {state === 'saving' ? copy.memory.saving : copy.memory.save}
