@@ -41,7 +41,7 @@ export default function PlaceHero({
         className={cn('block w-full object-cover saturate-[0.92]', fill ? 'h-full' : 'aspect-[16/10]')}
       />
       {!fill && <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/35 to-transparent" />}
-      <figcaption className={cn('absolute text-[0.54rem] tracking-[0.03em] text-white/90 [text-shadow:0_0_4px_rgba(0,0,0,0.6)]', fill ? 'left-3 top-2' : 'bottom-1.5 right-2')}>
+      <figcaption className={cn('absolute z-10 text-[0.54rem] tracking-[0.03em] text-white/90 [text-shadow:0_0_4px_rgba(0,0,0,0.6)]', fill ? 'left-3 top-2' : 'bottom-1.5 right-2')}>
         <Credit hero={hero} tabIndex={tabIndex} />
       </figcaption>
     </figure>

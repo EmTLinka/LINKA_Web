@@ -48,8 +48,14 @@ type BaseMessages = {
     fallback: (shownIn: string) => string
     close: string
     activities: string
+    /** The photograph before the one on screen. */
+    prevPhoto: string
     /** Advances the place profile through its photograph and public memories. */
     nextPhoto: string
+    /** Opens the photograph that is showing, full screen. */
+    viewPhoto: string
+    /** Where this photograph sits among the ones on the place. */
+    photoOf: (n: number, of: number) => string
     /** The note of a memory its author offered to this place. */
     memoryPost: string
     memoryPhoto: string
@@ -115,7 +121,10 @@ const en: BaseMessages = {
     fallback: (shownIn) => `Shown in ${shownIn} — not yet written in English.`,
     close: 'Close',
     activities: 'Things to do',
+    prevPhoto: 'Previous photo',
     nextPhoto: 'Next photo',
+    viewPhoto: 'View this photograph',
+    photoOf: (n, of) => `${n} of ${of}`,
     memoryPost: 'Shared memory',
     memoryPhoto: 'A photograph shared with this place',
   },
@@ -176,7 +185,10 @@ const ja: BaseMessages = {
     fallback: (shownIn) => `${shownIn}で表示しています（日本語の説明は準備中です）。`,
     close: '閉じる',
     activities: 'できること',
+    prevPhoto: '前の写真',
     nextPhoto: '次の写真',
+    viewPhoto: 'この写真を大きく見る',
+    photoOf: (n, of) => `${of}枚中${n}枚目`,
     memoryPost: '公開された思い出',
     memoryPhoto: 'この場所に公開された写真',
   },
@@ -237,7 +249,10 @@ const zhHans: BaseMessages = {
     fallback: (shownIn) => `暂无简体中文介绍，以下以${shownIn}显示。`,
     close: '关闭',
     activities: '可以做的事',
+    prevPhoto: '上一张照片',
     nextPhoto: '下一张照片',
+    viewPhoto: '查看这张照片',
+    photoOf: (n, of) => `第 ${n} 张，共 ${of} 张`,
     memoryPost: '公开的回忆',
     memoryPhoto: '分享到这个地点的照片',
   },
