@@ -208,15 +208,21 @@ export default function PlaceGallery({
               const shown = frameIndex === pos
               const viewAt = views.findIndex((view) => view.key === frame.slide.key)
               return (
-                <div key={frame.key} className="relative h-full min-w-full shrink-0" aria-hidden={!shown}>
-                  <SlideFrame
-                    slide={frame.slide}
-                    hero={hero}
-                    priority={priority && frame.slide.kind === 'hero' && frameIndex === (count > 1 ? 1 : 0)}
-                    tabIndex={shown ? tabIndex : -1}
-                    urls={urls}
-                    alt={copy.place.memoryPhoto}
-                  />
+                <div
+                  key={frame.key}
+                  className="relative h-full min-w-full shrink-0 focus-within:ring-2 focus-within:ring-inset focus-within:ring-white/80"
+                  aria-hidden={!shown}
+                >
+                  <div className="absolute inset-0 z-[1]">
+                    <SlideFrame
+                      slide={frame.slide}
+                      hero={hero}
+                      priority={priority && frame.slide.kind === 'hero' && frameIndex === (count > 1 ? 1 : 0)}
+                      tabIndex={shown ? tabIndex : -1}
+                      urls={urls}
+                      alt={copy.place.memoryPhoto}
+                    />
+                  </div>
                   {shown && viewAt >= 0 && (
                     <button
                       ref={openButton}
@@ -224,7 +230,7 @@ export default function PlaceGallery({
                       tabIndex={tabIndex}
                       aria-label={openLabel(copy.place.viewPhoto, copy.place.photoOf, frame.slide, hero, viewAt, views.length)}
                       onClick={() => openView(frame.slide.key)}
-                      className="pointer-events-none absolute inset-0 z-[1] appearance-none border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80"
+                      className="pointer-events-none absolute inset-0 z-0 appearance-none border-0 bg-transparent p-0 outline-none"
                     />
                   )}
                 </div>

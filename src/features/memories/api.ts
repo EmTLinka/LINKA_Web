@@ -8,9 +8,10 @@ import type { Tables, TablesUpdate } from '@/types/database.types'
  * A person's own memories: the note, the mood and the photographs of a visit.
  *
  * A memory is private unless its author marks it public. RLS lets a user read
- * and write only their own rows; anyone may read a memory whose visibility is
- * `public`, and sign a URL for a photograph that memory points at. Every other
- * object in `memory-photos` stays in that user's folder.
+ * and write only their own rows. Anyone may read the photographs of a public
+ * memory — not its note, mood, dates, author or visit — and sign a URL for
+ * one of those photographs. Every other object in `memory-photos` stays in
+ * that user's folder.
  */
 
 export type MemoryPhotoRow = Pick<Tables<'memory_photos'>, 'id' | 'storage_path' | 'width' | 'height' | 'position'>
@@ -66,28 +67,53 @@ export async function fetchMyMemories(): Promise<MemoryRecord[]> {
   return data as unknown as MemoryRecord[]
 }
 
-/** The memory of a visit, if one has been kept. At most one exists. */
-/** A memory its author offered to the place: the note and the photographs, nothing else. */
+/** Photographs a memory's author offered to a place. The words stay with the author. */
 export type PublicMemory = {
   id: string
-  note: string | null
-  created_at: string
   memory_photos: MemoryPhotoRow[]
 }
 
 /**
- * Memories of one place that their authors marked public, oldest first.
- * Private memories are not in this result — the database refuses them.
+ * Photographs of one place that their authors marked public, oldest memory first.
+ * Private memories are not in this result — the database refuses them. The note
+ * is not part of this read.
  */
 export async function fetchPublicMemories(placeId: string): Promise<PublicMemory[]> {
-  const { data, error } = await (await getSupabase())
+  const supabase = await getSupabase()
+  const shared = await supabase.rpc('shared_memory_photos', { p_place_id: placeId })
+  if (!shared.error) return groupSharedPhotos(shared.data ?? [])
+  // The photograph-only function is not on this database yet. Read the pictures
+  // without the note; the place's own photograph does not come from here.
+  const { data, error } = await supabase
     .from('memories')
-    .select('id, note, created_at, memory_photos!memory_photos_memory_id_fkey(id, storage_path, width, height, position)')
+    .select('id, memory_photos!memory_photos_memory_id_fkey(id, storage_path, width, height, position)')
     .eq('place_id', placeId)
     .eq('visibility', 'public')
     .order('created_at', { ascending: true })
   if (error) throw error
-  return (data ?? []) as unknown as PublicMemory[]
+  return (data ?? []).flatMap((memory) => {
+    const photos = [...(memory.memory_photos ?? [])].sort((a, b) => a.position - b.position)
+    return photos.length > 0 ? [{ id: memory.id, memory_photos: photos }] : []
+  })
+}
+
+function groupSharedPhotos(
+  photos: { id: string; memory_id: string; storage_path: string; width: number; height: number; position: number }[],
+): PublicMemory[] {
+  const memories: PublicMemory[] = []
+  for (const photo of photos) {
+    const row: MemoryPhotoRow = {
+      id: photo.id,
+      storage_path: photo.storage_path,
+      width: photo.width,
+      height: photo.height,
+      position: photo.position,
+    }
+    const last = memories[memories.length - 1]
+    if (last?.id === photo.memory_id) last.memory_photos.push(row)
+    else memories.push({ id: photo.memory_id, memory_photos: [row] })
+  }
+  return memories
 }
 
 export async function fetchMemoryForVisit(visitId: string): Promise<MemoryRecord | null> {
