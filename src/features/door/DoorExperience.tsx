@@ -35,9 +35,11 @@ type DoorExperienceProps = {
  * LINKA's universal entrance.
  *
  * Everyone comes through this door — first visit or five hundredth, signed in
- * or not. What changes is the trigger, never the entrance. The destination is
- * decided entirely by the existing `nextStepFor`, so authentication and
- * onboarding routing stay exactly where they already live.
+ * or not. What changes is the trigger, never the entrance. When it finishes,
+ * a guest goes straight to the map. Sign-in and account creation stay
+ * available, but only when a later action needs them. A person who already
+ * has a session still continues with `nextStepFor` (an unfinished account, a
+ * Touch they were in the middle of, or the page they left to sign in).
  */
 export default function DoorExperience({ initialSignal, onFinish }: DoorExperienceProps) {
   const navigate = useNavigate()
@@ -45,10 +47,11 @@ export default function DoorExperience({ initialSignal, onFinish }: DoorExperien
   const { profile, loading: profileLoading } = useProfileContext()
 
   /*
-   * Decided once, on the first render. `/` is re-entered by VerifyScreen after
-   * a successful OTP, and replaying the whole entrance in the middle of signing
+   * Decided once, on the first render. If an auth detour marked this tab and
+   * then returned to `/`, replaying the whole entrance in the middle of signing
    * in would be wrong — but this is the ONLY case we skip for. It is not a
-   * record that the door has been seen.
+   * record that the door has been seen. With no session, that return goes to
+   * the map, the same place the door itself now leads.
    */
   const [isResumingAuth] = useState(
     () => !onFinish && !isReplayRequested() && doorSession.isReturningFromAuth(),
@@ -62,7 +65,8 @@ export default function DoorExperience({ initialSignal, onFinish }: DoorExperien
   /*
    * The entrance can finish before the stored session has been restored (the
    * Supabase client loads while the Door plays). Leaving then would send a
-   * signed-in visitor to sign-in, so it waits — on paper — until it knows.
+   * signed-in visitor onto the guest map, so it waits — on paper — until it
+   * knows. A guest is not sent to sign in: the map is the entrance's destination.
    */
   const [isFinished, setIsFinished] = useState(false)
   const isDecided = !authLoading && (!session || !profileLoading)
@@ -76,8 +80,7 @@ export default function DoorExperience({ initialSignal, onFinish }: DoorExperien
       return
     }
 
-    doorSession.beginAuthDetour()
-    navigate('/auth', { replace: true })
+    navigate('/home', { replace: true })
   }, [isFinished, isDecided, session, profile, navigate])
 
   const { state, started, reducedMotion, start, skip } = useDoorSequence({
@@ -95,7 +98,7 @@ export default function DoorExperience({ initialSignal, onFinish }: DoorExperien
     }
 
     if (!session) {
-      return <Navigate to="/auth" replace />
+      return <Navigate to="/home" replace />
     }
 
     if (profileLoading) {
