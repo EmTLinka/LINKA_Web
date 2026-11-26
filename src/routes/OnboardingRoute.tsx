@@ -5,7 +5,7 @@ import { isProfileComplete } from '@/features/onboarding/api'
 import OnboardingScreen from '@/features/onboarding/screens/OnboardingScreen'
 import { useProfileContext } from '@/features/onboarding/useProfileContext'
 
-/** Connects the onboarding form to the shared profile state. */
+/** Connects the profile questions to the shared profile state. */
 export default function OnboardingRoute() {
   const { profile, loading, apply } = useProfileContext()
 

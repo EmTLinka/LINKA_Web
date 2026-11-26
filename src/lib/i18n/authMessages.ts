@@ -33,6 +33,20 @@ export type AuthMessages = {
     optional: string
     avatar: string
     submit: string
+    skip: string
+    next: string
+    back: string
+    done: string
+    doneSkip: string
+    progress: (current: number, total: number) => string
+    residence: string
+    residenceHint: string
+    country: string
+    prefecture: string
+    travel: string
+    household: string
+    travelOptions: Record<'rarely' | 'yearly' | 'several' | 'monthly' | 'often', string>
+    householdOptions: Record<'alone' | 'partner' | 'children' | 'parents' | 'extended' | 'other', string>
     sessionExpired: string
     saveFailed: string
     genders: Record<'female' | 'male' | 'non_binary' | 'prefer_not_to_say', string>
@@ -75,8 +89,14 @@ const en: AuthMessages = {
   password: { createTitle: 'Choose a password', createBody: 'Next time, sign in with it — no code needed.', resetTitle: 'Set a new password', resetBody: 'You will use it the next time you sign in.', continue: 'Continue', save: 'Save password' },
   reset: { expiredTitle: 'This link has expired', expiredBody: 'Recovery links work once, for a short time. Ask for a new one and open it on this device.', newLink: 'Send a new link' },
   onboarding: {
-    title: 'Create your profile', body: 'Just a nickname is enough. The rest is yours to share, or not.', nickname: 'Nickname', nicknamePlaceholder: 'What should we call you?', nicknameRequired: 'Choose a nickname so we know what to call you.',
+    title: 'A little about you', body: 'One question at a time. Every answer is optional — you can skip any of them.', nickname: 'Nickname', nicknamePlaceholder: 'What should we call you?', nicknameRequired: 'Choose a nickname so we know what to call you.',
     ageRange: 'Age range', nationality: 'Nationality', notSpecified: 'Not specified', gender: 'Gender', optional: 'optional', avatar: 'Avatar', submit: 'Start my journey',
+    skip: 'Skip', next: 'Next', back: 'Back', done: 'Start', doneSkip: 'Start without answering',
+    progress: (current, total) => `${current} of ${total}`,
+    residence: 'Where do you live?', residenceHint: 'A country is enough. If you live in Japan, you can also choose a prefecture.',
+    country: 'Country', prefecture: 'Prefecture', travel: 'How often do you travel?', household: 'Who do you live with?',
+    travelOptions: { rarely: 'Rarely', yearly: 'Once or twice a year', several: 'A few times a year', monthly: 'About once a month', often: 'More often than that' },
+    householdOptions: { alone: 'I live alone', partner: 'With a partner', children: 'With children', parents: 'With parents', extended: 'With a larger family', other: 'Another way' },
     sessionExpired: 'Your session has expired. Please sign in again.', saveFailed: 'We could not save your profile. Please try again.',
     genders: { female: 'Female', male: 'Male', non_binary: 'Non-binary', prefer_not_to_say: 'Prefer not to say' }, under18: 'Under 18',
   },
@@ -107,8 +127,14 @@ const ja: AuthMessages = {
   password: { createTitle: 'パスワードを設定', createBody: '次回からはパスワードでサインインできます。コードは不要です。', resetTitle: '新しいパスワードを設定', resetBody: '次回のサインインから使います。', continue: '次へ', save: 'パスワードを保存' },
   reset: { expiredTitle: 'このリンクは有効期限が切れています', expiredBody: '再設定のリンクは一度だけ、短い時間のみ有効です。新しいリンクをこの端末で開いてください。', newLink: '新しいリンクを送る' },
   onboarding: {
-    title: 'プロフィールを作成', body: 'ニックネームだけで大丈夫です。ほかの項目は任意です。', nickname: 'ニックネーム', nicknamePlaceholder: '呼び名を教えてください', nicknameRequired: 'ニックネームを入力してください。',
+    title: 'あなたについて', body: '一問ずつお聞きします。すべて任意です。答えなくても先へ進めます。', nickname: 'ニックネーム', nicknamePlaceholder: '呼び名を教えてください', nicknameRequired: 'ニックネームを入力してください。',
     ageRange: '年代', nationality: '国籍', notSpecified: '指定しない', gender: '性別', optional: '任意', avatar: 'アバター', submit: '旅をはじめる',
+    skip: 'スキップ', next: '次へ', back: '戻る', done: 'はじめる', doneSkip: '答えずにはじめる',
+    progress: (current, total) => `${current} / ${total}`,
+    residence: '住んでいる場所', residenceHint: '国を選んでください。日本にお住まいなら、都道府県も選べます。',
+    country: '国', prefecture: '都道府県', travel: '旅行の頻度', household: '家族構成',
+    travelOptions: { rarely: 'ほとんどしない', yearly: '年に1〜2回', several: '年に数回', monthly: '月に1回くらい', often: 'それ以上' },
+    householdOptions: { alone: 'ひとり暮らし', partner: '夫婦・パートナーと', children: '子どもと', parents: '親と', extended: '三世代などで', other: 'その他' },
     sessionExpired: 'セッションの有効期限が切れました。もう一度サインインしてください。', saveFailed: 'プロフィールを保存できませんでした。もう一度お試しください。',
     genders: { female: '女性', male: '男性', non_binary: 'ノンバイナリー', prefer_not_to_say: '回答しない' }, under18: '18歳未満',
   },
@@ -139,8 +165,14 @@ const zhHans: AuthMessages = {
   password: { createTitle: '设置密码', createBody: '下次用密码登录即可，无需验证码。', resetTitle: '设置新密码', resetBody: '下次登录时使用。', continue: '继续', save: '保存密码' },
   reset: { expiredTitle: '此链接已失效', expiredBody: '重置链接只能使用一次，且有效时间很短。请获取新链接并在本设备上打开。', newLink: '发送新链接' },
   onboarding: {
-    title: '创建个人资料', body: '只需要一个昵称，其他内容可以不填。', nickname: '昵称', nicknamePlaceholder: '我们该怎么称呼你？', nicknameRequired: '请填写昵称。',
+    title: '关于你', body: '一次一个问题。都可以不回答，直接继续。', nickname: '昵称', nicknamePlaceholder: '我们该怎么称呼你？', nicknameRequired: '请填写昵称。',
     ageRange: '年龄段', nationality: '国籍', notSpecified: '不指定', gender: '性别', optional: '可选', avatar: '头像', submit: '开始我的旅程',
+    skip: '跳过', next: '下一题', back: '返回', done: '开始', doneSkip: '不回答，直接开始',
+    progress: (current, total) => `${current} / ${total}`,
+    residence: '你住在哪里？', residenceHint: '选择国家即可。如果住在日本，还可以选择都道府县。',
+    country: '国家或地区', prefecture: '都道府县', travel: '旅行频率', household: '家庭构成',
+    travelOptions: { rarely: '几乎不旅行', yearly: '一年一两次', several: '一年数次', monthly: '大约每月一次', often: '比这更频繁' },
+    householdOptions: { alone: '独自居住', partner: '和伴侣', children: '和孩子', parents: '和父母', extended: '和更多家人', other: '其他' },
     sessionExpired: '登录已过期，请重新登录。', saveFailed: '无法保存个人资料，请重试。',
     genders: { female: '女性', male: '男性', non_binary: '非二元', prefer_not_to_say: '不愿透露' }, under18: '18岁以下',
   },
