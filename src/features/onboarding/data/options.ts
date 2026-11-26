@@ -23,3 +23,13 @@ export const GENDERS: Option[] = [
   { value: 'non_binary', label: 'Non-binary' },
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ]
+
+/** How often they travel. Stored in `profiles.travel_frequency`. */
+export const TRAVEL_FREQUENCIES = ['rarely', 'yearly', 'several', 'monthly', 'often'] as const
+
+export type TravelFrequency = (typeof TRAVEL_FREQUENCIES)[number]
+
+/** Who they live with. Stored in `profiles.household`. */
+export const HOUSEHOLDS = ['alone', 'partner', 'children', 'parents', 'extended', 'other'] as const
+
+export type Household = (typeof HOUSEHOLDS)[number]

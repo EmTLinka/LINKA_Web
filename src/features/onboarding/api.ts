@@ -64,9 +64,58 @@ export async function saveProfile(userId: string, draft: ProfileDraft): Promise<
   return data
 }
 
-/** Onboarding is complete once the user has chosen a nickname. */
+/**
+ * Optional answers collected after the account exists.
+ *
+ * A prefecture is kept only for Japan. Finishing — including skipping every
+ * question — sets `profile_details_completed_at`. Until that moment the
+ * account is unfinished, and the next sign-in returns here.
+ */
+export type ProfileDetails = {
+  ageRange: string | null
+  gender: string | null
+  residenceCountry: string | null
+  residencePrefecture: string | null
+  travelFrequency: string | null
+  household: string | null
+}
+
+export async function saveProfileDetails(userId: string, details: ProfileDetails): Promise<Profile> {
+  const country = details.residenceCountry
+  const { data, error } = await (await getSupabase())
+    .from('profiles')
+    .upsert(
+      {
+        id: userId,
+        age_range: details.ageRange,
+        gender: details.gender,
+        residence_country: country,
+        residence_prefecture: country === 'JP' ? details.residencePrefecture : null,
+        travel_frequency: details.travelFrequency,
+        household: details.household,
+        profile_details_completed_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' },
+    )
+    .select()
+    .single()
+
+  if (error) {
+    throw error
+  }
+
+  return data
+}
+
+/**
+ * The account may enter the map once the profile questions have been finished.
+ *
+ * Leaving partway through does not count: the next sign-in opens the same
+ * page again. Skipping a question is still an answer — only reaching the end
+ * records the profile as finished.
+ */
 export function isProfileComplete(profile: Profile | null): boolean {
-  return Boolean(profile?.display_name?.trim())
+  return Boolean(profile?.profile_details_completed_at)
 }
 
 /** Remember the account's language, so every device starts in it. */

@@ -10,11 +10,11 @@ export const REPLAY_PARAM = 'replay'
  * this flag must never be read as "this person has seen the Door, so skip it
  * from now on". A fresh, intentional visit to LINKA always begins at the Door.
  *
- * The flag exists for exactly one problem: when the Door sends an unauthenticated
- * visitor into the OTP flow, `VerifyScreen` returns them to `/` on success. Without
- * a marker, that internal redirect would replay the whole entrance in the middle
- * of signing in. So the flag is set only when an auth detour *begins*, and is
- * cleared the moment `/` is re-entered — it survives one redirect and no longer.
+ * The flag exists for exactly one problem: an auth detour that returns to `/`
+ * (the OTP flow used to) must not replay the whole entrance in the middle of
+ * signing in. The Door itself no longer starts that detour — a guest goes to
+ * the map — so the flag is set only if an auth screen begins one, and is
+ * cleared the moment `/` is re-entered. It survives one redirect and no longer.
  *
  * Consequences of that scoping, all intended:
  *   - an authenticated visitor opening LINKA gets the Door, every time

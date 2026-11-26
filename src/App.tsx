@@ -43,13 +43,12 @@ const worldFallback = <div className="h-dvh bg-canvas" />
 const pageFallback = <div className="h-dvh bg-paper-lit" />
 
 /**
- * Real-world touch → door → LINKA → create account (code → password) or sign
- * in (password) → profile → your own world.
+ * Real-world touch → door → the map. Creating an account or signing in happens
+ * later, when an action needs one — never as the door's own next step.
  *
  * The Door is the universal entrance and therefore sits outside the guards: it
- * must render for signed-out and signed-in visitors alike. It decides nothing
- * itself — the destination still comes from `nextStepFor`, and everything
- * behind it is gated by the same guards as before.
+ * must render for signed-out and signed-in visitors alike. A guest leaves it
+ * for the map. Someone who already has a session continues with `nextStepFor`.
  */
 export default function App() {
   // Whatever the entrance, fetch My World once the first screen has settled.

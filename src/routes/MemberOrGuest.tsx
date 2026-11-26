@@ -11,8 +11,8 @@ import { useProfileContext } from '@/features/onboarding/useProfileContext'
  * (which show a guest a sign-in gate rather than a redirect).
  *
  * Signed out: render as a guest. Signed in: the account must be finished
- * first — a password, then a nickname — exactly as the member-only guards
- * require; an unfinished account is sent to finish it.
+ * first — a password, then the profile questions — exactly as the member-only
+ * guards require; an unfinished account is sent to finish it.
  */
 export default function MemberOrGuest() {
   const { session, user, loading } = useAuth()

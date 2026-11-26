@@ -847,10 +847,15 @@ export type Database = {
           created_at: string
           display_name: string | null
           gender: string | null
+          household: string | null
           id: string
           nationality: string | null
           preferred_locale: string | null
+          profile_details_completed_at: string | null
+          residence_country: string | null
+          residence_prefecture: string | null
           role: string
+          travel_frequency: string | null
           updated_at: string
         }
         Insert: {
@@ -859,10 +864,15 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           gender?: string | null
+          household?: string | null
           id: string
           nationality?: string | null
           preferred_locale?: string | null
+          profile_details_completed_at?: string | null
+          residence_country?: string | null
+          residence_prefecture?: string | null
           role?: string
+          travel_frequency?: string | null
           updated_at?: string
         }
         Update: {
@@ -871,10 +881,15 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           gender?: string | null
+          household?: string | null
           id?: string
           nationality?: string | null
           preferred_locale?: string | null
+          profile_details_completed_at?: string | null
+          residence_country?: string | null
+          residence_prefecture?: string | null
           role?: string
+          travel_frequency?: string | null
           updated_at?: string
         }
         Relationships: []
