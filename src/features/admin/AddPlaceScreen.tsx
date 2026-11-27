@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button'
 import LoadingScreen from '@/components/ui/LoadingScreen'
 import TextField from '@/components/ui/TextField'
 import { createPlace, lookupEnglishName, lookupPlaces, type CreatedPlace, type PlaceCandidate } from '@/features/admin/api'
-import { emptyPlaceForm, formFromFetched, placeFromForm, type PlaceForm } from '@/features/admin/placeForm'
+import { emptyPlaceForm, formFromFetched, normalizeSlug, placeFromForm, type PlaceForm } from '@/features/admin/placeForm'
 import { pendingReturn } from '@/features/auth/pendingReturn'
 import { useAuth } from '@/features/auth/useAuth'
 import { useProfileContext } from '@/features/onboarding/useProfileContext'
@@ -99,15 +99,22 @@ function AddPlaceForm({ accessToken }: { accessToken: string }) {
     event.preventDefault()
     const latitude = Number(form.latitude)
     const longitude = Number(form.longitude)
-    if (!form.slug.trim() || !form.native_name.trim() || !form.latitude.trim() || !form.longitude.trim()
-      || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      setError('slug、現地語の名前、緯度、経度は必須です。')
+    const slug = normalizeSlug(form.slug)
+    if (!slug) {
+      setError('slug は英小文字・数字・ハイフンだけです。例: toki-no-mori')
       return
     }
+    if (!form.native_name.trim() || !form.latitude.trim() || !form.longitude.trim()
+      || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      setError('現地語の名前、緯度、経度は必須です。')
+      return
+    }
+    const ready = { ...form, slug }
+    setForm(ready)
     setSaving(true)
     setError(null)
     try {
-      setCreated(await createPlace(accessToken, placeFromForm(form)))
+      setCreated(await createPlace(accessToken, placeFromForm(ready)))
     } catch (cause) {
       setCreated(null)
       setError(cause instanceof Error ? cause.message : 'create_failed')

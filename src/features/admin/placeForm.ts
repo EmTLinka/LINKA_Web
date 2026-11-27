@@ -156,6 +156,23 @@ function emptyToNull(value: string): string | null {
   return trimmed ? trimmed : null
 }
 
+const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
+
+/**
+ * The places slug rule: lowercase latin, digits, and single hyphens.
+ * "Toki no Mori Park" becomes "toki-no-mori-park". Japanese-only text cannot.
+ */
+export function normalizeSlug(value: string): string | null {
+  const slug = value
+    .trim()
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return SLUG.test(slug) ? slug : null
+}
+
 /** The `place` object posted to `admin-places` `create`. */
 export function placeFromForm(form: PlaceForm): Record<string, unknown> {
   const hours = form.hours.trim()
@@ -173,7 +190,7 @@ export function placeFromForm(form: PlaceForm): Record<string, unknown> {
   const sourceUrl = emptyToNull(form.source_url)
 
   return {
-    slug: form.slug.trim(),
+    slug: normalizeSlug(form.slug) ?? form.slug.trim(),
     parent_slug: emptyToNull(form.parent_slug),
     kind: form.kind,
     native_name: form.native_name.trim(),

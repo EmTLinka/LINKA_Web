@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { formFromFetched, placeFromForm } from '../../src/features/admin/placeForm.ts'
+import { formFromFetched, normalizeSlug, placeFromForm } from '../../src/features/admin/placeForm.ts'
+
+test('a typed name is stored as the places slug', () => {
+  assert.equal(normalizeSlug('Toki no Mori Park'), 'toki-no-mori-park')
+  assert.equal(normalizeSlug('トキの森公園'), null)
+})
 
 test('a lookup result fills the form and still posts as place columns', () => {
   const form = formFromFetched({
