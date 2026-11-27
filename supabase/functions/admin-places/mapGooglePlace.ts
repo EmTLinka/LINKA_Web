@@ -98,6 +98,15 @@ function latinName(name: string | undefined): string | null {
   return text
 }
 
+/** English displayName → romanized_name and slug. A Japanese name stays empty. */
+export function englishPlaceName(displayName: string | null | undefined): {
+  romanized_name: string | null
+  slug: string | null
+} {
+  const romanized = latinName(displayName ?? undefined)
+  return { romanized_name: romanized, slug: suggestSlug(romanized) }
+}
+
 function nativeLocale(languageCode: string | undefined): string {
   if (languageCode === 'zh' || languageCode === 'zh-CN' || languageCode === 'zh-Hans') return 'zh-Hans'
   if (languageCode && LOCALE.test(languageCode)) return languageCode

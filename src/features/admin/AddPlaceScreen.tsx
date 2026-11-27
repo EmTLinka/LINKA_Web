@@ -1,10 +1,10 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useId, useRef, useState, type FormEvent } from 'react'
 import { Navigate } from 'react-router-dom'
 
 import Button from '@/components/ui/Button'
 import LoadingScreen from '@/components/ui/LoadingScreen'
 import TextField from '@/components/ui/TextField'
-import { createPlace, lookupPlaces, type CreatedPlace, type PlaceCandidate } from '@/features/admin/api'
+import { createPlace, lookupEnglishName, lookupPlaces, type CreatedPlace, type PlaceCandidate } from '@/features/admin/api'
 import { emptyPlaceForm, formFromFetched, placeFromForm, type PlaceForm } from '@/features/admin/placeForm'
 import { pendingReturn } from '@/features/auth/pendingReturn'
 import { useAuth } from '@/features/auth/useAuth'
@@ -48,6 +48,7 @@ function AddPlaceForm({ accessToken }: { accessToken: string }) {
   const [candidates, setCandidates] = useState<PlaceCandidate[]>([])
   const [searching, setSearching] = useState(false)
   const [saving, setSaving] = useState(false)
+  const picked = useRef<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<CreatedPlace | null>(null)
 
@@ -74,17 +75,32 @@ function AddPlaceForm({ accessToken }: { accessToken: string }) {
     }
   }
 
-  function applyCandidate(candidate: PlaceCandidate) {
+  async function applyCandidate(candidate: PlaceCandidate) {
+    const token = candidate.googlePlaceId ?? candidate.place.native_name ?? ''
+    picked.current = token
     setForm(formFromFetched(candidate.place))
     setError(null)
     setCreated(null)
+    if (!candidate.googlePlaceId) return
+    try {
+      const names = await lookupEnglishName(accessToken, candidate.googlePlaceId)
+      if (picked.current !== token) return
+      setForm((current) => ({
+        ...current,
+        ...(names.romanized_name ? { romanized_name: names.romanized_name } : {}),
+        ...(names.slug ? { slug: names.slug } : {}),
+      }))
+    } catch {
+      if (picked.current === token) setError('英語名は取れませんでした。slug は手入力できます。')
+    }
   }
 
   async function save(event: FormEvent) {
     event.preventDefault()
     const latitude = Number(form.latitude)
     const longitude = Number(form.longitude)
-    if (!form.slug.trim() || !form.native_name.trim() || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    if (!form.slug.trim() || !form.native_name.trim() || !form.latitude.trim() || !form.longitude.trim()
+      || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
       setError('slug、現地語の名前、緯度、経度は必須です。')
       return
     }

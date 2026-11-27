@@ -49,6 +49,22 @@ export async function lookupPlaces(accessToken: string, query: string): Promise<
   return payload?.candidates ?? []
 }
 
+/** One Place Details call: English displayName only, for the chosen candidate. */
+export async function lookupEnglishName(
+  accessToken: string,
+  placeId: string,
+): Promise<{ romanized_name: string | null; slug: string | null }> {
+  const payload = (await postAdminPlaces(accessToken, {
+    action: 'lookup',
+    placeId,
+    part: 'englishName',
+  })) as { romanized_name?: string | null; slug?: string | null } | null
+  return {
+    romanized_name: payload?.romanized_name ?? null,
+    slug: payload?.slug ?? null,
+  }
+}
+
 export async function createPlace(accessToken: string, place: Record<string, unknown>): Promise<CreatedPlace> {
   return (await postAdminPlaces(accessToken, { action: 'create', place })) as CreatedPlace
 }

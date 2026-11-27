@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { mapGooglePlace, suggestSlug } from '../../supabase/functions/admin-places/mapGooglePlace.ts'
+import { englishPlaceName, mapGooglePlace, suggestSlug } from '../../supabase/functions/admin-places/mapGooglePlace.ts'
 
 const CHECKED = '2026-11-27T03:00:00.000Z'
 
@@ -21,6 +21,14 @@ const JA = {
   timeZone: { id: 'Asia/Tokyo' },
   regularOpeningHours: { weekdayDescriptions: ['月曜日: 8:30～17:00', '火曜日: 定休日'] },
 }
+
+test('an English display name becomes the romanized name and slug', () => {
+  assert.deepEqual(englishPlaceName('Toki no Mori Park'), {
+    romanized_name: 'Toki no Mori Park',
+    slug: 'toki-no-mori-park',
+  })
+  assert.deepEqual(englishPlaceName('大野亀'), { romanized_name: null, slug: null })
+})
 
 test('suggestSlug keeps Latin names and refuses Japanese', () => {
   assert.equal(suggestSlug('Toki no Mori Park'), 'toki-no-mori-park')

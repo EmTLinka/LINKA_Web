@@ -5,14 +5,18 @@
 //   apikey: <publishable key>
 //
 //   { "action": "lookup", "query": "トキの森公園" }
-//   { "action": "lookup", "placeId": "ChIJ..." }
+//   { "action": "lookup", "placeId": "ChIJ...", "part": "englishName" }
 //   { "action": "create", "place": { ...columns from lookup, or typed by hand } }
+//
+// A text search runs once, in Japanese. English displayName is a separate
+// Place Details call for the one chosen id, masked to id and displayName,
+// so it does not repeat the higher search SKU.
 //
 // lookup needs the secret GOOGLE_MAPS_API_KEY (Places API (New)).
 // create does not: it calls admin_create_place as the same user, which
 // refuses anyone who is not admin. A non-admin never reaches Google.
 
-import { mapGooglePlace, type GooglePlace } from './mapGooglePlace.ts'
+import { englishPlaceName, mapGooglePlace, type GooglePlace } from './mapGooglePlace.ts'
 
 declare const Deno: {
   env: { get(name: string): string | undefined }
@@ -31,7 +35,8 @@ const SEARCH_MASK = [
   'places.regularOpeningHours',
 ].join(',')
 
-const DETAIL_MASK = SEARCH_MASK.replaceAll('places.', '')
+/** English name only. Opening hours and website would bill a higher SKU. */
+const ENGLISH_NAME_MASK = 'id,displayName'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -43,6 +48,7 @@ type LookupBody = {
   action?: string
   query?: string
   placeId?: string
+  part?: string
   place?: unknown
 }
 
@@ -123,24 +129,25 @@ class GoogleError extends Error {
   }
 }
 
-async function loadPlace(id: string, languageCode: string, key: string): Promise<GooglePlace> {
-  return google<GooglePlace>(
-    `https://places.googleapis.com/v1/places/${id}?languageCode=${languageCode}`,
-    'GET',
-    DETAIL_MASK,
-    key,
-  )
-}
-
-async function searchPlaces(query: string, languageCode: string, key: string): Promise<GooglePlace[]> {
+async function searchPlaces(query: string, key: string): Promise<GooglePlace[]> {
   const found = await google<{ places?: GooglePlace[] }>(
     'https://places.googleapis.com/v1/places:searchText',
     'POST',
     SEARCH_MASK,
     key,
-    { textQuery: query, languageCode, maxResultCount: 5 },
+    { textQuery: query, languageCode: 'ja', maxResultCount: 5 },
   )
   return found.places ?? []
+}
+
+async function englishName(id: string, key: string): Promise<Response> {
+  const place = await google<GooglePlace>(
+    `https://places.googleapis.com/v1/places/${id}?languageCode=en`,
+    'GET',
+    ENGLISH_NAME_MASK,
+    key,
+  )
+  return json(englishPlaceName(place.displayName?.text))
 }
 
 async function lookup(body: LookupBody, key: string): Promise<Response> {
@@ -148,32 +155,19 @@ async function lookup(body: LookupBody, key: string): Promise<Response> {
   if (body.query && body.placeId) return json({ error: 'lookup_conflict' }, 400)
 
   if (body.placeId) {
+    if (body.part !== 'englishName') return json({ error: 'unknown_part' }, 400)
     const id = placeIdOf(body.placeId)
     if (!id) return json({ error: 'invalid_place_id' }, 400)
-    const ja = await loadPlace(id, 'ja', key)
-    let en: GooglePlace | null = null
-    try {
-      en = await loadPlace(id, 'en', key)
-    } catch {
-      en = null
-    }
-    return json({ candidate: { googlePlaceId: ja.id ?? id, place: mapGooglePlace(ja, en, checkedAt) } })
+    return englishName(id, key)
   }
 
   const query = body.query?.trim() ?? ''
   if (!query || query.length > 200) return json({ error: 'query_required' }, 400)
-  const japanese = await searchPlaces(query, 'ja', key)
-  let english: GooglePlace[] = []
-  try {
-    english = await searchPlaces(query, 'en', key)
-  } catch {
-    english = []
-  }
-  const englishById = new Map(english.flatMap((place) => (place.id ? [[place.id, place] as const] : [])))
+  const japanese = await searchPlaces(query, key)
   return json({
     candidates: japanese.map((place) => ({
       googlePlaceId: place.id ?? null,
-      place: mapGooglePlace(place, place.id ? englishById.get(place.id) ?? null : null, checkedAt),
+      place: mapGooglePlace(place, null, checkedAt),
     })),
   })
 }
