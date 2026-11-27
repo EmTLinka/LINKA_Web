@@ -1176,6 +1176,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_create_place: {
+        Args: { p_place: Json }
+        Returns: Json
+      }
       community_suggestion: {
         Args: { p_id: string }
         Returns: {
