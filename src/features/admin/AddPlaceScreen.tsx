@@ -1,5 +1,5 @@
 import { useId, useRef, useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 
 import Button from '@/components/ui/Button'
 import LoadingScreen from '@/components/ui/LoadingScreen'
@@ -126,7 +126,13 @@ function AddPlaceForm({ accessToken }: { accessToken: string }) {
   return (
     <main className="min-h-full px-7 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(3rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto flex w-full max-w-lg flex-col">
-        <h1 className="text-3xl font-light tracking-tight text-sand">場所を追加</h1>
+        <Link
+          to="/home"
+          className="inline-flex h-11 w-fit items-center justify-center rounded-full border border-graphite px-5 text-sm font-medium text-graphite"
+        >
+          ホームへ戻る
+        </Link>
+        <h1 className="mt-8 text-3xl font-medium tracking-tight text-graphite">場所を追加</h1>
         <p className="mt-3 text-sm leading-relaxed text-sand-muted">
           地図から取るか、欄を手で埋めます。公開した destination だけ、NFC の URL が作られます。
         </p>
@@ -155,10 +161,10 @@ function AddPlaceForm({ accessToken }: { accessToken: string }) {
                   <button
                     type="button"
                     onClick={() => applyCandidate(candidate)}
-                    className="w-full rounded-2xl border border-ink-line px-4 py-3 text-left transition-colors hover:border-glow"
+                    className="w-full rounded-2xl border border-graphite/30 px-4 py-3 text-left transition-colors hover:border-graphite"
                   >
-                    <span className="block text-sand">{name}</span>
-                    {where ? <span className="mt-1 block text-sm text-sand-faint">{where}</span> : null}
+                    <span className="block font-medium text-graphite">{name}</span>
+                    {where ? <span className="mt-1 block text-sm font-medium text-graphite-soft">{where}</span> : null}
                   </button>
                 </li>
               )
@@ -261,12 +267,12 @@ function AddPlaceForm({ accessToken }: { accessToken: string }) {
 function Created({ created }: { created: CreatedPlace }) {
   const path = created.touchpoint?.path
   return (
-    <div role="status" className="rounded-2xl border border-ink-line px-4 py-4 text-sm leading-relaxed text-sand">
+    <div role="status" className="rounded-2xl border border-graphite/30 px-4 py-4 text-sm font-medium leading-relaxed text-graphite">
       <p>{created.place?.slug ? `${created.place.slug} を追加しました。` : '追加しました。'}</p>
       {path ? (
-        <p className="mt-2 text-glow">{path}</p>
+        <p className="mt-2 font-medium text-graphite">{path}</p>
       ) : (
-        <p className="mt-2 text-sand-muted">下書きです。status を published にすると NFC の URL が作られます。</p>
+        <p className="mt-2 font-medium text-graphite-soft">下書きです。status を published にすると NFC の URL が作られます。</p>
       )}
     </div>
   )
