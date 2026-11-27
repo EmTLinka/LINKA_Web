@@ -3,7 +3,7 @@ const STORAGE_KEY = 'linka.return.pending'
 const TTL_MS = 30 * 60 * 1000
 
 /** Only these may be returned to: LINKA's own pages, never an address from outside. */
-const ALLOWED = /^\/(community|moments|me|place)(\/[\w\-/%.]*)?(\?[\w\-=&%.]*)?$/
+const ALLOWED = /^\/(community|moments|me|place)(\/[\w\-/%.]*)?(\?[\w\-=&%.]*)?$|^\/admin\/addplaces$/
 
 /**
  * Where a guest was when an action needed an account — "I'd like to go",

@@ -49,6 +49,9 @@ export const SuggestionsScreen = lazyWithPreload(() => import('@/features/commun
 export const SuggestionScreen = lazyWithPreload(() => import('@/features/community/screens/SuggestionScreen'))
 export const SuggestPlaceScreen = lazyWithPreload(() => import('@/features/community/screens/SuggestPlaceScreen'))
 
+/** Staff page for adding a place. Opened by its URL only; nothing warms it on idle. */
+export const AddPlaceScreen = lazyWithPreload(() => import('@/features/admin/AddPlaceScreen'))
+
 /**
  * DEV PREVIEW ONLY — the emergency-notice demonstration on a real place.
  * Absent from production builds, like the My World preview.
@@ -92,6 +95,7 @@ export function firstRouteReady(pathname: string): Promise<unknown> {
   if (pathname.startsWith('/auth') || pathname.startsWith('/onboarding')) return preloadAccount()
   if (pathname.startsWith('/t/')) return TouchScreen.preload()
   if (pathname.startsWith('/place/')) return PlaceScreen.preload()
+  if (pathname === '/admin/addplaces') return AddPlaceScreen.preload()
   if (MyWorldPreviewScreen && pathname.startsWith('/preview/')) return MyWorldPreviewScreen.preload()
   if (pathname.startsWith('/home')) HomeScreen.warm()
   if (pathname === '/moments/new' || pathname.endsWith('/edit')) PastMemoryScreen.warm()

@@ -23,7 +23,12 @@ test('return after sign-in: LINKA pages only', () => {
     assert.equal(pendingReturn.read(), path, path)
     pendingReturn.clear()
   }
-  for (const path of ['//evil.example/x', 'https://evil.example/', '/auth/signin', '/onboarding', 'javascript:alert(1)', '/community/../../x"><script>', '/home']) {
+  for (const path of ['/admin/addplaces']) {
+    pendingReturn.write(path)
+    assert.equal(pendingReturn.read(), path, path)
+    pendingReturn.clear()
+  }
+  for (const path of ['//evil.example/x', 'https://evil.example/', '/auth/signin', '/onboarding', 'javascript:alert(1)', '/community/../../x"><script>', '/home', '/admin', '/admin/addplaces/extra']) {
     pendingReturn.write(path)
     assert.equal(pendingReturn.read(), null, `refused: ${path}`)
   }

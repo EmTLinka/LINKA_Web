@@ -35,6 +35,7 @@ import {
   SuggestionsScreen,
   SuggestPlaceScreen,
   TouchScreen,
+  AddPlaceScreen,
 } from '@/routes/lazyScreens'
 import ReturnSync from '@/routes/ReturnSync'
 
@@ -204,6 +205,16 @@ export default function App() {
               </Route>
 
               {/* Sprint 1A entrance, kept reachable for visual comparison only. */}
+              {/* Staff only. No link points here; the URL is typed. */}
+              <Route
+                path="/admin/addplaces"
+                element={
+                  <Suspense fallback={<div className="h-dvh bg-ink" />}>
+                    <AddPlaceScreen />
+                  </Suspense>
+                }
+              />
+
               <Route path="/legacy/entry" element={<EntryScreen />} />
               <Route path="/legacy/reveal" element={<BrandRevealScreen />} />
 
