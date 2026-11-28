@@ -33,4 +33,21 @@ delete from place_reviews where body = '静かだった';
 select t.ok((select count(*) from place_review_feed() where body = '静かだった') = 0, 'the author can delete');
 delete from place_reviews where body = '島の印象';
 select t.ok((select count(*) from place_review_feed() where body = '島の印象') = 0, 'the author can delete a note with no place');
+
+-- An older place keeps its own page when newer notes elsewhere fill the shared one.
+insert into place_reviews (place_id, body) values (t.place('shukunegi'), '宿根木の古い話');
+insert into place_reviews (place_id, body)
+select t.place('toki-no-mori'), '森の話' || g
+from generate_series(1, 300) as g;
 reset role;
+update place_reviews set created_at = timestamptz '2020-01-01+00' where body = '宿根木の古い話';
+
+select t.ok((select count(*) from place_review_feed() where body = '宿根木の古い話') = 0, 'the shared page is only the newest notes');
+select t.ok((select count(*) from place_review_feed(null, null, 1000)) = 300, 'a page cannot ask for more than 300');
+select t.ok((select count(*) from place_review_feed(t.place('shukunegi')) where body = '宿根木の古い話') = 1, 'the place page still has the older note');
+select t.ok((select count(*) from place_review_feed(t.place('shukunegi')) where place_id is distinct from t.place('shukunegi')) = 0, 'a place page contains only that place');
+select t.ok((select count(*) from place_review_feed(t.place('toki-no-mori'), null, 5)) = 5, 'a profile takes five notes');
+select t.ok((select distinct total from place_review_feed(t.place('toki-no-mori'), null, 5)) = 300, 'those five still report the place''s real number');
+select t.ok((select count(*) from place_review_feed(t.place('shukunegi'), timestamptz '2020-06-01+00') where body = '宿根木の古い話') = 1, 'a cursor keeps an older note');
+select t.ok((select count(*) from place_review_feed(t.place('shukunegi'), timestamptz '2019-01-01+00') where body = '宿根木の古い話') = 0, 'a cursor drops a note that is not before it');
+select t.fails($$select user_id from place_review_feed(t.place('shukunegi'), null, 5)$$, '42703', 'a place page has no user id');

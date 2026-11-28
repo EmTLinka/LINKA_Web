@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 
-import { useReviews } from '@/data/reviews'
+import { usePlaceReviews } from '@/data/reviews'
 import { usePlaces } from '@/data/places'
 import { worldPathOf } from '@/features/world/geo/regions'
 import { useLocale } from '@/lib/i18n/LocaleContext'
@@ -12,17 +12,20 @@ const ON_CARD = 4
 /**
  * The notes on one place's profile. Reading only: writing happens on the
  * shared screen, where every place's notes are gathered.
+ *
+ * The card shows four. The page is five rows, and `total` is how many that
+ * place has, which is what "ほかN件" counts.
  */
 export default function PlaceReviews({ placeId }: { placeId: string }) {
   const copy = useMessages()
   const { locale } = useLocale()
   const { pathname, search } = useLocation()
   const { index } = usePlaces()
-  const feed = useReviews()
+  const feed = usePlaceReviews(placeId, ON_CARD + 1)
   const writeTo = reviewHref(placeId, index?.byId.get(placeId) ?? null, pathname, search)
-  const notes = (feed.data ?? []).filter((review) => review.place_id === placeId)
+  const notes = feed.data ?? []
   const shown = notes.slice(0, ON_CARD)
-  const rest = notes.length - shown.length
+  const rest = Math.max(0, (notes[0]?.total ?? notes.length) - shown.length)
 
   return (
     <section className="mt-8 border-t border-graphite/15 pt-5" aria-label={copy.reviews.title}>

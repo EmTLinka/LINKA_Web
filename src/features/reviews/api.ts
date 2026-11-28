@@ -6,9 +6,25 @@ export type PlaceReview = Rpc['place_review_feed']['Returns'][number]
 
 const MAX = 400
 
-/** Every public note, newest first. The nickname comes along; the author id does not. */
-export async function fetchReviews(): Promise<PlaceReview[]> {
-  const { data, error } = await (await getSupabase()).rpc('place_review_feed')
+export type ReviewQuery = {
+  /** One place. Omit to read across every place. */
+  placeId?: string
+  /** Only notes strictly older than this instant. */
+  before?: string
+  /** At most this many. The database caps a page at 300. */
+  limit?: number
+}
+
+/**
+ * Public notes, newest first. The nickname comes along; the author id does not.
+ * A place page also carries `total`, how many notes that place has.
+ */
+export async function fetchReviews(query: ReviewQuery = {}): Promise<PlaceReview[]> {
+  const args: Database['public']['Functions']['place_review_feed']['Args'] = {}
+  if (query.placeId) args.p_place_id = query.placeId
+  if (query.before) args.p_before = query.before
+  if (query.limit) args.p_limit = query.limit
+  const { data, error } = await (await getSupabase()).rpc('place_review_feed', args)
   if (error) throw error
   return data
 }

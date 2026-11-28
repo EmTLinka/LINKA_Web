@@ -1273,7 +1273,11 @@ export type Database = {
         Returns: boolean
       }
       place_review_feed: {
-        Args: Record<PropertyKey, never>
+        Args: {
+          p_before?: string
+          p_limit?: number
+          p_place_id?: string
+        }
         Returns: {
           author_name: string | null
           body: string
@@ -1281,6 +1285,7 @@ export type Database = {
           id: string
           mine: boolean
           place_id: string | null
+          total: number
         }[]
       }
       place_touches_today: { Args: { p_place_id: string }; Returns: number }

@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
-import { REVIEWS_KEY, useReviews } from '@/data/reviews'
+import { REVIEWS_KEY, usePlaceReviews, useReviews } from '@/data/reviews'
 import { invalidate } from '@/data/store'
 import { usePlaces } from '@/data/places'
 import { useAuth } from '@/features/auth/useAuth'
@@ -22,6 +22,8 @@ const OVERALL = ''
  *
  * Each profile card only reads its own. Here they are gathered, still
  * separated by the place they belong to. A note can also belong to no place.
+ * The place this screen was opened from is read on its own, so its older
+ * notes are not dropped because newer notes were written somewhere else.
  */
 export default function ReviewsScreen() {
   const copy = useMessages()
@@ -32,6 +34,7 @@ export default function ReviewsScreen() {
   const feed = useReviews()
   const [params] = useSearchParams()
   const focusId = params.get('place')
+  const focusedPage = usePlaceReviews(focusId, 300)
 
   const places = useMemo(
     () => (index?.all ?? []).filter((place) => place.kind === 'destination').sort((a, b) => a.name.localeCompare(b.name, locale)),
@@ -54,12 +57,13 @@ export default function ReviewsScreen() {
       list.push(review)
       byPlace.set(id, list)
     }
+    if (focusId && focusedPage.data) byPlace.set(focusId, focusedPage.data)
     const focused = focusId && focusId !== OVERALL && (placeName.has(focusId) || byPlace.has(focusId)) ? [focusId] : []
     const rest = [...byPlace.keys()].filter((id) => id !== OVERALL && id !== focusId)
     const showOverall = byPlace.has(OVERALL) || placeId === OVERALL
     const order = [...focused, ...(showOverall ? [OVERALL] : []), ...rest]
     return order.map((id) => ({ id, place: id ? (placeName.get(id) ?? null) : null, notes: byPlace.get(id) ?? [] }))
-  }, [feed.data, focusId, placeId, placeName])
+  }, [feed.data, focusId, focusedPage.data, placeId, placeName])
 
   const [text, setText] = useState('')
   const [saving, setSaving] = useState(false)
