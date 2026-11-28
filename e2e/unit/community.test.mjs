@@ -18,7 +18,7 @@ globalThis.window = {
 beforeEach(() => store.clear())
 
 test('return after sign-in: LINKA pages only', () => {
-  for (const path of ['/community', '/community/suggestions/1e0c1d5e-1111-4111-8111-111111111111', '/community/suggestions?stage=review', '/community/suggest', '/moments/new', '/place/shukunegi', '/me']) {
+  for (const path of ['/community', '/community/suggestions/1e0c1d5e-1111-4111-8111-111111111111', '/community/suggestions?stage=review', '/community/suggest', '/moments/new', '/place/shukunegi', '/me', '/reviews?place=1e0c1d5e-1111-4111-8111-111111111111']) {
     pendingReturn.write(path)
     assert.equal(pendingReturn.read(), path, path)
     pendingReturn.clear()

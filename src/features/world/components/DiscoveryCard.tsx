@@ -83,20 +83,8 @@ export default function DiscoveryCard({ place, shown, onClose, visitedOn = null,
             distance: o.distance,
           }))}
           onOpenOther={onOpenOther}
+          activities={place.activities}
         />
-        {place.activities.length > 0 && (
-          <div className="mt-4 px-5">
-            <h3 className="text-[0.58rem] uppercase tracking-[0.22em] text-graphite-soft">{copy.place.activities}</h3>
-            <ul className="mt-2 space-y-2.5 border-l border-graphite/10 pl-3">
-              {place.activities.map((activity) => (
-                <li key={activity.title}>
-                  <p className="text-[0.76rem] tracking-[0.02em] text-graphite">{activity.title}</p>
-                  <p className="mt-0.5 text-[0.7rem] font-light leading-snug text-graphite-soft">{activity.detail}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </section>
   )

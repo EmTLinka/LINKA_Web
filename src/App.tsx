@@ -35,6 +35,7 @@ import {
   SuggestionsScreen,
   SuggestPlaceScreen,
   TouchScreen,
+  ReviewsScreen,
 } from '@/routes/lazyScreens'
 import ReturnSync from '@/routes/ReturnSync'
 
@@ -190,6 +191,14 @@ export default function App() {
                   element={
                     <Suspense fallback={pageFallback}>
                       <SuggestionScreen />
+                    </Suspense>
+                  }
+                />
+                <Route
+                  path="/reviews"
+                  element={
+                    <Suspense fallback={pageFallback}>
+                      <ReviewsScreen />
                     </Suspense>
                   }
                 />

@@ -178,6 +178,30 @@ export type JourneyMessages = {
     invalidLink: string
     status: Record<SuggestionStatus, string>
   }
+  /** Visitor notes on a place profile, read there and written on one shared screen. */
+  reviews: {
+    title: string
+    write: string
+    empty: string
+    more: (count: number) => string
+    placeholder: string
+    placeLabel: string
+    overall: string
+    overallPlaceholder: string
+    overallEmpty: string
+    post: string
+    posting: string
+    failed: string
+    signIn: string
+    edit: string
+    remove: string
+    save: string
+    cancel: string
+    confirmRemove: string
+    traveller: string
+    back: string
+    groupEmpty: string
+  }
 }
 
 const en: JourneyMessages = {
@@ -327,6 +351,29 @@ const en: JourneyMessages = {
       duplicate: 'Already suggested',
       withdrawn: 'Withdrawn',
     },
+  },
+  reviews: {
+    title: 'Visitor notes',
+    write: 'Write',
+    empty: 'No notes yet.',
+    more: (count) => `${count} more`,
+    placeholder: 'What did you notice here?',
+    placeLabel: 'Place',
+    overall: 'Overall',
+    overallPlaceholder: 'What stayed with you from the journey?',
+    overallEmpty: 'No overall notes yet.',
+    post: 'Post',
+    posting: 'Posting…',
+    failed: 'We could not save it. Please try again.',
+    signIn: 'Sign in to write',
+    edit: 'Edit',
+    remove: 'Delete',
+    save: 'Save',
+    cancel: 'Cancel',
+    confirmRemove: 'Delete this note?',
+    traveller: 'A traveller',
+    back: 'Map',
+    groupEmpty: 'No notes for this place yet.',
   },
 }
 
@@ -478,6 +525,29 @@ const ja: JourneyMessages = {
       withdrawn: '取り下げ',
     },
   },
+  reviews: {
+    title: '口コミ',
+    write: '記入する',
+    empty: 'まだ口コミはありません。',
+    more: (count) => `ほか${count}件`,
+    placeholder: 'ここに来て、何を感じましたか？',
+    placeLabel: '場所',
+    overall: '全体',
+    overallPlaceholder: '旅の全体で、何を感じましたか？',
+    overallEmpty: '全体の口コミはまだありません。',
+    post: '投稿する',
+    posting: '投稿しています…',
+    failed: '保存できませんでした。もう一度お試しください。',
+    signIn: '記入するにはサインイン',
+    edit: '編集',
+    remove: '削除',
+    save: '保存',
+    cancel: 'キャンセル',
+    confirmRemove: 'この口コミを削除しますか？',
+    traveller: '旅人',
+    back: '地図',
+    groupEmpty: 'この場所の口コミはまだありません。',
+  },
 }
 
 const zhHans: JourneyMessages = {
@@ -627,6 +697,29 @@ const zhHans: JourneyMessages = {
       duplicate: '已有相同推荐',
       withdrawn: '已撤回',
     },
+  },
+  reviews: {
+    title: '留言',
+    write: '填写',
+    empty: '还没有留言。',
+    more: (count) => `还有${count}条`,
+    placeholder: '来到这里，你注意到了什么？',
+    placeLabel: '地点',
+    overall: '整体',
+    overallPlaceholder: '这一路，你感受到了什么？',
+    overallEmpty: '还没有与地点无关的留言。',
+    post: '发布',
+    posting: '正在发布…',
+    failed: '保存失败，请重试。',
+    signIn: '登录后填写',
+    edit: '编辑',
+    remove: '删除',
+    save: '保存',
+    cancel: '取消',
+    confirmRemove: '删除这条留言？',
+    traveller: '旅人',
+    back: '地图',
+    groupEmpty: '这个地点还没有留言。',
   },
 }
 

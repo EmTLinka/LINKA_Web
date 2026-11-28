@@ -49,6 +49,9 @@ export const SuggestionsScreen = lazyWithPreload(() => import('@/features/commun
 export const SuggestionScreen = lazyWithPreload(() => import('@/features/community/screens/SuggestionScreen'))
 export const SuggestPlaceScreen = lazyWithPreload(() => import('@/features/community/screens/SuggestPlaceScreen'))
 
+/** Visitor notes: read on each place profile, written on this one screen. */
+export const ReviewsScreen = lazyWithPreload(() => import('@/features/reviews/screens/ReviewsScreen'))
+
 /**
  * DEV PREVIEW ONLY — the emergency-notice demonstration on a real place.
  * Absent from production builds, like the My World preview.
@@ -98,6 +101,7 @@ export function firstRouteReady(pathname: string): Promise<unknown> {
   else if (pathname.startsWith('/moments/')) MomentScreen.warm()
   else if (pathname.startsWith('/moments')) MomentsScreen.warm()
   if (pathname.startsWith('/me')) MeScreen.warm()
+  if (pathname.startsWith('/reviews')) ReviewsScreen.warm()
   if (pathname === '/community') CommunityScreen.warm()
   else if (pathname === '/community/suggest') SuggestPlaceScreen.warm()
   else if (pathname.startsWith('/community/suggestions/')) SuggestionScreen.warm()

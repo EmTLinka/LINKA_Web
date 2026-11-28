@@ -51,6 +51,8 @@ export type LocalizedPlace = {
   name: string
   /** The second line: a verified name in this language, or a romanization. */
   nameLatin: string
+  /** The stored romanization of the native name, when there is one. */
+  romanizedName: string | null
   locality: string | null
   summary: LocalizedText | null
   practical: Practical | null
@@ -98,6 +100,7 @@ export function localizePlace(place: PlaceRecord, locale: Locale): LocalizedPlac
     parentId: place.parent_id,
     name: place.native_name,
     nameLatin,
+    romanizedName: place.romanized_name,
     locality: locality?.value ?? null,
     summary: summary && { text: summary.value, locale: summary.locale, fallback: summary.locale !== locale },
     practical: practical && {
