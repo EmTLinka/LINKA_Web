@@ -42,11 +42,18 @@ export default function ReviewsScreen() {
   )
   const placeName = useMemo(() => new Map(places.map((place) => [place.id, place])), [places])
 
-  const [placeId, setPlaceId] = useState(focusId ?? OVERALL)
+  // Only a published destination may be the composer's place. A region, an
+  // unpublished place, or an unknown id is absent from the select, and
+  // submitting it is refused. The index can arrive after the first paint, so
+  // a real destination is filled in once, without disturbing a later choice.
+  const composerPlace = focusId && placeName.has(focusId) ? focusId : OVERALL
+  const [placeId, setPlaceId] = useState(composerPlace)
   const [trackedFocus, setTrackedFocus] = useState(focusId)
-  if (focusId !== trackedFocus) {
+  const [placesReady, setPlacesReady] = useState(index !== null)
+  if (focusId !== trackedFocus || (index !== null && !placesReady)) {
     setTrackedFocus(focusId)
-    if (focusId) setPlaceId(focusId)
+    setPlacesReady(index !== null)
+    setPlaceId(composerPlace)
   }
 
   const groups = useMemo(() => {
