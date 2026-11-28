@@ -13,7 +13,8 @@ import { useState } from 'react'
 export function useWorldSelection(levelKey: string, openPlaceId: string | null) {
   const [chosenId, setChosenId] = useState<string | null>(null)
   const [discoveryId, setDiscoveryId] = useState<string | null>(openPlaceId)
-  const [sheetId, setSheetId] = useState<string | null>(null)
+  // A visited place's profile is the sheet; an unvisited one's is the discovery card.
+  const [sheetId, setSheetId] = useState<string | null>(openPlaceId)
 
   const [cardLevel, setCardLevel] = useState(levelKey)
   if (cardLevel !== levelKey) {

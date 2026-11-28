@@ -14,7 +14,7 @@ import { useWorldPath } from '@/features/world/useWorldPath'
 import AppShell from '@/layouts/AppShell'
 import { useLocale } from '@/lib/i18n/LocaleContext'
 import { useMessages } from '@/lib/i18n/useMessages'
-import { CommunityScreen } from '@/routes/lazyScreens'
+import { CommunityScreen, ReviewsScreen } from '@/routes/lazyScreens'
 
 /** Set by the Touch screen when it hands a fresh check-in over to My World. */
 export type HomeArrivalState = { arrivalPlaceId?: string } | null
@@ -39,7 +39,7 @@ export type HomeArrivalState = { arrivalPlaceId?: string } | null
 export default function HomeScreen() {
   const { snapshot, discovery, ready } = useMyWorld()
   const { path, enter, back } = useWorldPath()
-  const { state } = useLocation() as { state: HomeArrivalState }
+  const { state, pathname, search } = useLocation() as { state: HomeArrivalState; pathname: string; search: string }
   const navigate = useNavigate()
   const copy = useMessages()
   // Read once: Back and Forward must not replay an arrival.
@@ -48,11 +48,21 @@ export default function HomeScreen() {
   // the map") or by id (older links, another card's nearby place).
   const [params] = useSearchParams()
   const [openPlace] = useState(() => params.get('place'))
+  const reviewsTo = `/reviews?from=${encodeURIComponent(`${pathname}${search}`)}`
   const openPlaceId = openPlace ? (discovery.find((p) => p.slug === openPlace)?.id ?? openPlace) : null
   const memoryPins = useMemoryPins(ready && path.length === 2)
 
   return (
     <AppShell>
+      <Link
+        to={reviewsTo}
+        onPointerEnter={ReviewsScreen.warm}
+        onTouchStart={ReviewsScreen.warm}
+        onFocus={ReviewsScreen.warm}
+        className="absolute right-4 z-20 inline-flex min-h-11 items-center rounded-full bg-graphite px-4 text-[0.86rem] tracking-[0.06em] text-paper-lit shadow-[0_1px_2px_rgba(51,48,43,0.16),0_8px_18px_-12px_rgba(51,48,43,0.45)] outline-none top-[calc(max(2.25rem,env(safe-area-inset-top))+6.1rem)] focus-visible:ring-2 focus-visible:ring-graphite/40"
+      >
+        {copy.reviews.title}
+      </Link>
       {ready ? (
         <MyWorld
           snapshot={snapshot}

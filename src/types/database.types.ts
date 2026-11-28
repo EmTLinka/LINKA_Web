@@ -328,6 +328,48 @@ export type Database = {
           },
         ]
       }
+      place_reviews: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          place_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          place_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          place_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_reviews_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "place_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       place_suggestion_events: {
         Row: {
           created_at: string
@@ -1229,6 +1271,17 @@ export type Database = {
       is_public_suggestion_status: {
         Args: { p_status: string }
         Returns: boolean
+      }
+      place_review_feed: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          author_name: string | null
+          body: string
+          created_at: string
+          id: string
+          mine: boolean
+          place_id: string | null
+        }[]
       }
       place_touches_today: { Args: { p_place_id: string }; Returns: number }
       place_visitors_today: { Args: { p_place_id: string }; Returns: number }

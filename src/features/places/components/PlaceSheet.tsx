@@ -3,6 +3,7 @@ import { type ReactNode } from 'react'
 import type { RegionProgress } from '@/data/journey'
 import type { PlaceExtras } from '@/data/places'
 import NearbyPlaces, { type NearbyPlace } from '@/features/places/components/NearbyPlaces'
+import PlaceReviews from '@/features/reviews/components/PlaceReviews'
 import PlaceGallery from '@/features/places/components/PlaceGallery'
 import PlaceHero from '@/features/places/components/PlaceHero'
 import PlaceSafety, { type SafetyScope } from '@/features/places/components/PlaceSafety'
@@ -58,6 +59,8 @@ type PlaceSheetProps = {
   compact?: boolean
   /** Extra content under the identity (the check-in status, actions). */
   children?: ReactNode
+  /** Curated things to do, shown above the visitor notes so notes stay last. */
+  activities?: readonly { title: string; detail: string }[]
   /**
    * When set, the photograph opens into the memories this place was offered.
    * A sideways drag moves through them. Omitted, only the place's own
@@ -93,6 +96,7 @@ export default function PlaceSheet({
   others = [],
   onOpenOther,
   children,
+  activities = [],
   placeId = null,
 }: PlaceSheetProps) {
   const copy = useMessages()
@@ -249,7 +253,22 @@ export default function PlaceSheet({
           </Section>
         )}
 
+        {!compact && activities.length > 0 && (
+          <Section title={copy.place.activities}>
+            <ul className="space-y-2.5 border-l border-graphite/10 pl-3">
+              {activities.map((activity) => (
+                <li key={activity.title}>
+                  <p className="text-[0.76rem] tracking-[0.02em] text-graphite">{activity.title}</p>
+                  <p className="mt-0.5 text-[0.7rem] font-light leading-snug text-graphite-soft">{activity.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
         {place.sampleNote && <p className="mt-4 text-[0.56rem] tracking-[0.06em] text-graphite-faint">{place.sampleNote}</p>}
+
+        {!compact && placeId && <PlaceReviews placeId={placeId} />}
       </div>
     </article>
   )
